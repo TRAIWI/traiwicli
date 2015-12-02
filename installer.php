@@ -28,9 +28,27 @@ class TraiwiInstallation {
 	
 	/**
 	 * 
+	 * @var string
+	 */
+	protected $core;
+	
+	/**
+	 * 
+	 * @var string
+	 */
+	protected $composer;
+	
+	/**
+	 * 
 	 * @var array
 	 */
 	protected $folders;
+	
+	/**
+	 * 
+	 * @var array
+	 */
+	protected $files;
 	
 	
 	/**
@@ -39,6 +57,8 @@ class TraiwiInstallation {
 	public function __construct(Colorizer $colorizer) {
 		$this->colorizer = $colorizer;
 		$this->targetDir = getcwd();
+		$this->core = "traiwi/";
+		$this->composer = $this->core . "composer.phar";
 		$this->folders = array(
 			"traiwi",
 			"traiwi/client",
@@ -58,6 +78,107 @@ class TraiwiInstallation {
 			"traiwi/shell/templates",
 		);
 		
+$config = '[mysql]
+host="127.0.0.1"
+dbname="traiwi"
+user="root"
+password="123"
+
+[system]
+default_lang="de"
+default_title="TRAIWI"
+logging="on"
+password_salt="123"
+password_reset_salt="456"
+lowest_role="GUEST"
+custom_repository_factory=""
+';
+
+$htaccess = 'RewriteEngine On
+RewriteBase /
+
+RewriteRule ^uploads/ - [L]
+
+RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.css$ core/$1/Shell/CSS/$2.css [L]
+RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.js$ core/$1/Shell/JS/$2.js [L]
+RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.gif$ core/$1/Shell/Images/$2.gif [L]
+RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.png$ core/$1/Shell/Images/$2.png [L]
+RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.jpg$ core/$1/Shell/Images/$2.jpg [L]
+RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.eot$ core/$1/Shell/Fonts/$2.eot [L]
+RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.eot?#iefix$ core/$1/Shell/Fonts/$2.eot [L]
+RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.woff$ core/$1/Shell/Fonts/$2.woff [L]
+RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.woff2$ core/$1/Shell/Fonts/$2.woff2 [L]
+RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.ttf$ core/$1/Shell/Fonts/$2.ttf [L]
+RewriteRule ^uploads/(.*)$ uploads/$1 [L]
+RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.svg#icomoon$ core/$1/Shell/Fonts/$2.svg [L]
+RewriteRule ^(.*)\.ico$ - [L]
+RewriteRule ^(.*)$ main.php?url=$1 [QSA,L]			
+';
+
+$main = '<?php
+
+ob_start();
+
+$ds = DIRECTORY_SEPARATOR;
+
+ini_set("expose_php","Off");
+ini_set("log_errors",TRUE);
+ini_set("error_log",dirname(__FILE__).$ds."custom_error_log.txt");
+error_reporting(E_ALL ^ E_STRICT);
+mb_internal_encoding("UTF-8");
+mb_regex_encoding("UTF-8");
+
+date_default_timezone_set("Europe/Berlin");
+
+define("APP_ROOT", dirname(__FILE__).$ds."..".$ds."traiwi3".$ds."src".$ds);
+define("CACHE_ROOT", dirname(__FILE__).$ds."..".$ds."traiwi3".$ds."cache".$ds);
+define("VENDOR_ROOT", dirname(__FILE__).$ds."..".$ds."traiwi3".$ds."vendor".$ds);
+define("USERDATA_ROOT", dirname(__FILE__).$ds."..".$ds."traiwi3".$ds."userdata".$ds);
+define("TRAIWI_CORE", "de".$ds."traiwi".$ds."Core".$ds);
+define("CLIENT_DIR", basename(dirname(__FILE__)));
+
+include_once APP_ROOT.TRAIWI_CORE."Classloader.php";
+
+$loader = new de\traiwi\Core\Classloader(APP_ROOT);
+$loader->register();
+
+if(file_exists(VENDOR_ROOT."autoload.php")) {
+	require_once VENDOR_ROOT."autoload.php";
+}
+
+use de\traiwi\Core\Server;
+use de\traiwi\Core\Services\Config;
+
+$client_config = new Config(dirname(__FILE__));
+$server_config = new Config(APP_ROOT.TRAIWI_CORE);
+
+$client_config->defineConstants();
+
+$server = new Server($client_config, $server_config);
+$server->run();
+
+?>			
+';
+		
+$composer = '{
+    "require": {
+        "doctrine/orm": "2.4.*",
+   		"scipper/formfile": "dev-master",
+   		"scipper/nerdyknife": "dev-develop"
+    },
+    "repositories": [ 
+    ]
+}
+		
+';
+		
+		$this->files = array(
+			"traiwi/client/config/config.ini" => $config,
+			"traiwi/client/.htaccess" => $htaccess,
+			"traiwi/client/main.php" => $main,
+			"traiwi/composer.json" => $composer,
+		);
+		
 		$this->colorizer->cecho("___________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 		$this->colorizer->cecho("TRAIWI Installation", Colorizer::FG_ORANGE); echo PHP_EOL;
@@ -68,7 +189,9 @@ class TraiwiInstallation {
 		$this->createFolders();
 		$this->installComposer();
 		$this->createFiles();
+		$this->loadVendors();
 		$this->setPermission();
+		$this->finish();
 	}
 	
 	/**
@@ -103,7 +226,6 @@ class TraiwiInstallation {
 		}
 		
 		echo PHP_EOL;
-	
 	}
 	
 	/**
@@ -126,26 +248,66 @@ class TraiwiInstallation {
 		
 		curl_close($ch);
 		
-		$composer = "composer.phar";
-		if(!file_put_contents($composer, $output)) {
-			$this->error("composer.phar could not be created");
+		if(!file_put_contents($this->composer, $output)) {
+			$this->error($this->composer . " could not be created");
 		}
 		
-		if(!chmod($composer, 0755)) {
-			$this->error("Permission for composer.phar could not be set");
+		if(!chmod($this->composer, 0755)) {
+			$this->error("Permission for " . $this->composer . " could not be set");
 		}
 		
-		system("php composer.phar");
+		system("php " . $this->composer . " -- --install-dir=" . $this->core);
 	}
 	
+	/**
+	 * 
+	 */
 	public function createFiles() {
+		$process = 0;
+		
 		$this->colorizer->cecho("Creating default system files: ", Colorizer::FG_LIGHT_GRAY);
+		$this->colorizer->cecho($process . " %", Colorizer::FG_GREEN);
 	
+		$k = 0;
+		foreach($this->files as $filename => $content) {
+			$path = $this->targetDir . DIRECTORY_SEPARATOR . $filename;
+			if(!file_exists($path)) {
+				if(!file_put_contents($path, $content)) {
+					$this->error($path . " could not be created");
+				}
+				
+				if(!chmod($path, 0644)) {
+					$this->error("Permission for " . $path . " could not be set");
+				}
+			}
+				
+			$process = round((100 / count($this->files)) * ($k + 1));
+			echo "\r";
+				
+			$this->colorizer->cecho("Creating default system files: ", Colorizer::FG_LIGHT_GRAY);
+			$this->colorizer->cecho($process . " %", Colorizer::FG_GREEN);
+			
+			$k++;
+		}
+		
+		echo PHP_EOL;
+	}
+	
+	public function loadVendors() {
+		system("php " . $this->composer . " --working-dir=" . $this->core . " update");
 	}
 	
 	public function setPermission() {
-		$this->colorizer->cecho("setPermission", Colorizer::FG_LIGHT_GRAY);
+		$this->colorizer->cecho("setPermission", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 	
+	}
+	
+	public function finish() {
+		$this->colorizer->cecho("___________________", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho("                   "); echo PHP_EOL;
+		$this->colorizer->cecho("Congratulation!", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho("TRAIWI was successfully installed to " . $this->targetDir . DIRECTORY_SEPARATOR . $this->core, Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho("                   "); echo PHP_EOL;
 	}
 	
 	/**
