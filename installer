@@ -2,7 +2,8 @@
 
 <?php
 
-new TraiwiInstallation(new Colorizer());
+
+new TraiwiInstallation(new Colorizer(), is_array($argv) ? $argv : array());
 
 /**
  * 
@@ -50,15 +51,20 @@ class TraiwiInstallation {
 	 */
 	protected $files;
 	
+	/**
+	 * 
+	 * @var array
+	 */
+	protected $argv;
+	
 	
 	/**
 	 * 
 	 */
-	public function __construct(Colorizer $colorizer) {
+	public function __construct(Colorizer $colorizer, array $argv) {
+		print_r($argv);
 		$this->colorizer = $colorizer;
-		$this->targetDir = getcwd();
-		$this->core = "./";
-		$this->composer = $this->core . "composer.phar";
+		$this->argv = $argv;
 		$this->folders = array(
 			"client",
 			"client/cache",
@@ -161,10 +167,11 @@ $server->run();
 		
 $composer = '{
     "require": {
-		"doctrine/orm": "2.4.*",
+		"traiwi/traiwi": "dev-master",
 		"scipper/formfile": "dev-master"
     },
-    "repositories": [ 
+    "repositories": [
+		{"type": "composer", "url": "http://toran.myscipper.de/repo/private/"}
     ]
 }
 		
@@ -183,12 +190,19 @@ $composer = '{
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 
+		if(!isset($this->argv[1])) {
+			$this->error("No project name given");
+		}
+		
+		$this->core = trim($this->argv[1]) . "/";
+		$this->composer = $this->core . "composer.phar";
+		$this->targetDir = getcwd() . DIRECTORY_SEPARATOR . $this->core;
+		
 		$this->checkPermission();
 		$this->createFolders();
 		$this->installComposer();
 		$this->createFiles();
 		$this->loadVendors();
-		$this->setPermission();
 		$this->finish();
 	}
 	
@@ -196,7 +210,9 @@ $composer = '{
 	 * 
 	 */
 	public function checkPermission() {
-		if(!is_writable($this->targetDir)){
+		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("Traiwi will be installed in: " . $this->targetDir, Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		if(!mkdir($this->targetDir, 0750, true)){
 			$this->error("You have no permission to install TRAIWI in " . $this->targetDir);
 		}
 	}
@@ -298,24 +314,25 @@ $composer = '{
 		echo PHP_EOL;
 	}
 	
+	/**
+	 * 
+	 */
 	public function loadVendors() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Loading vendors", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
-		system("php " . $this->composer . " --working-dir=" . $this->core . " update");
+		system("php " . $this->composer . " --working-dir=" . $this->core . " update --prefer-dist");
 	}
 	
-	public function setPermission() {
-		$this->colorizer->cecho("setPermission", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
-	
-	}
-	
+	/**
+	 * 
+	 */
 	public function finish() {
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 		$this->colorizer->cecho("Congratulation!", Colorizer::FG_GREEN); echo PHP_EOL;
 		$this->colorizer->cecho("TRAIWI was successfully installed to: " . $this->targetDir, Colorizer::FG_GREEN); echo PHP_EOL;echo PHP_EOL;
 		$this->colorizer->cecho("Available public packages, you can install with 'php " . $this->composer . " require vendor/package', are: ", Colorizer::FG_GREEN); echo PHP_EOL;
-		$this->colorizer->cecho(" - traiwi/test", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho(" - traiwi/traiwi: The Application Core, already installed", Colorizer::FG_GREEN); echo PHP_EOL;
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 	}
