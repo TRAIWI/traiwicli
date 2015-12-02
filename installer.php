@@ -211,8 +211,15 @@ $composer = '{
 	public function checkPermission() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Traiwi will be installed in: " . $this->targetDir, Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
-		if(!mkdir($this->targetDir, 0750, true)){
-			$this->error("You have no permission to install TRAIWI in " . $this->targetDir);
+		
+		if(isset($this->argv[2]) && $this->argv[2] == "--force") {
+			$this->rrmdir($this->targetDir);
+		}
+		
+		if(!@mkdir($this->targetDir, 0750, true)){
+			$msg = "You have no permission to install TRAIWI in " . $this->targetDir . PHP_EOL;
+			$msg .= "Append --force to override the current installtion";
+			$this->error($msg);
 		}
 	}
 	
@@ -223,7 +230,7 @@ $composer = '{
 		$process = 0;
 
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
-		$this->colorizer->cecho("Creating folder structure for traiwi: ", Colorizer::FG_LIGHT_GRAY); 
+		$this->colorizer->cecho("Creating folder structure for " . $this->core . ": ", Colorizer::FG_LIGHT_GRAY); 
 		$this->colorizer->cecho($process . " %", Colorizer::FG_GREEN);
 		
 		foreach($this->folders as $k => $folder) {
@@ -236,7 +243,7 @@ $composer = '{
 			echo "\r";
 
 			$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
-			$this->colorizer->cecho("Creating folder structure for traiwi: ", Colorizer::FG_LIGHT_GRAY);
+			$this->colorizer->cecho("Creating folder structure for " . $this->core . ": ", Colorizer::FG_LIGHT_GRAY);
 			$this->colorizer->cecho($process . " %", Colorizer::FG_GREEN);
 		}
 		
@@ -336,15 +343,37 @@ $composer = '{
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 	}
 	
+	public function rrmdir($dir) {
+		if(!is_dir($dir)) {
+			return;			
+		}
+		
+		$objects = scandir($dir);
+		foreach($objects as $object) {
+			if($object == "." || $object == "..") {
+				continue;	
+			}
+			
+			if(filetype($dir."/".$object) == "dir") {
+				$this->rrmdir($dir."/".$object); 
+			} else {
+				unlink($dir."/".$object);
+			}
+		}
+		
+		reset($objects);
+		rmdir($dir);
+	}
+	
 	/**
 	 * 
 	 * @param string $error
 	 */
 	public function error($error) {
-		$this->colorizer->cecho($error . ". exit", Colorizer::FG_RED); echo PHP_EOL; echo PHP_EOL;
+		$this->colorizer->cecho($error, Colorizer::FG_RED); echo PHP_EOL; echo PHP_EOL;
 		exit;
 	}
-	
+
 }
 
 
