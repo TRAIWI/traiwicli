@@ -313,7 +313,9 @@ $composer = '{
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 		$this->colorizer->cecho("Congratulation!", Colorizer::FG_GREEN); echo PHP_EOL;
-		$this->colorizer->cecho("TRAIWI was successfully installed to: " . $this->targetDir, Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho("TRAIWI was successfully installed to: " . $this->targetDir, Colorizer::FG_GREEN); echo PHP_EOL;echo PHP_EOL;
+		$this->colorizer->cecho("Available public packages, you can install with 'php " . $this->composer . " require vendor/package', are: ", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho(" - traiwi/test", Colorizer::FG_GREEN); echo PHP_EOL;
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 	}
