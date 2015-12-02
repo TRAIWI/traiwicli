@@ -139,7 +139,7 @@ class TraiwiInstallation {
 	}
 	
 	public function createFiles() {
-		$this->colorizer->cecho("createFiles", Colorizer::FG_LIGHT_GRAY);
+		$this->colorizer->cecho("Creating default system files: ", Colorizer::FG_LIGHT_GRAY);
 	
 	}
 	
