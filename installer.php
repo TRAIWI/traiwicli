@@ -161,9 +161,8 @@ $server->run();
 		
 $composer = '{
     "require": {
-        "doctrine/orm": "2.4.*",
-   		"scipper/formfile": "dev-master",
-   		"scipper/nerdyknife": "dev-develop"
+		"doctrine/orm": "2.4.*",
+		"scipper/formfile": "dev-master"
     },
     "repositories": [ 
     ]
