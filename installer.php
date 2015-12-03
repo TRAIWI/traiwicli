@@ -72,14 +72,14 @@ class TraiwiInstallation {
 			"client/uploads",
 			"client/logs",
 			"src",
-			"src/core",
-			"src/modules",
+			"src/Core",
+			"src/Modules",
 			"shell",
-			"shell/css",
-			"shell/js",
-			"shell/images",
-			"shell/fonts",
-			"shell/templates",
+			"shell/CSS",
+			"shell/JS",
+			"shell/Images",
+			"shell/Fonts",
+			"shell/Templates",
 		);
 		
 $config = '[mysql]
@@ -95,6 +95,7 @@ logging="on"
 password_salt="123"
 password_reset_salt="456"
 lowest_role="GUEST"
+is_dev_mode="true"
 custom_repository_factory=""
 user_resolve_target="Traiwi"
 ';
