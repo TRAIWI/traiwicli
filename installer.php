@@ -136,7 +136,8 @@ mb_regex_encoding("UTF-8");
 
 date_default_timezone_set("Europe/Berlin");
 
-define("APP_ROOT", dirname(__FILE__).$ds."..".$ds."src".$ds);
+define("APP_ROOT", dirname(__FILE__).$ds."..".$ds);
+define("SRC_ROOT", dirname(__FILE__).$ds."..".$ds."src".$ds);
 define("CACHE_ROOT", dirname(__FILE__).$ds."cache".$ds);
 define("VENDOR_ROOT", dirname(__FILE__).$ds."..".$ds."vendor".$ds);
 define("USERDATA_ROOT", dirname(__FILE__).$ds."uploads".$ds);
