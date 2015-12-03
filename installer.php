@@ -96,6 +96,7 @@ password_salt="123"
 password_reset_salt="456"
 lowest_role="GUEST"
 custom_repository_factory=""
+user_resolve_target="Traiwi"
 ';
 
 $htaccess = 'RewriteEngine On
@@ -177,6 +178,9 @@ require_once "../../vendor/autoload.php";
 
 use Doctrine\ORM\Tools\Setup;
 use Doctrine\ORM\EntityManager;
+use Doctrine\Common\EventManager;
+use Doctrine\ORM\Tools\ResolveTargetEntityListener;
+use Doctrine\ORM\Events;
 use Traiwi\Core\Services\Config;
 
 $paths = array(
@@ -195,7 +199,18 @@ $dbParams = array(
 );
 
 $config = Setup::createAnnotationMetadataConfiguration($paths, $isDevMode);
-$entityManager = EntityManager::create($dbParams, $config);
+		
+$evm  = new EventManager();
+$rtel = new ResolveTargetEntityListener();
+
+$rtel->addResolveTargetEntity(
+	"Traiwi\Core\Entities\BaseUserInterface", 
+	$clientConfig->get("user_resolve_target") . "\Core\Entities\MysUser", 
+	array()
+);
+$evm->addEventListener(Events::loadClassMetadata, $rtel);
+		
+$entityManager = EntityManager::create($dbParams, $config, $evm);
 
 ?>';
 		
