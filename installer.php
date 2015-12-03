@@ -127,38 +127,36 @@ $ds = DIRECTORY_SEPARATOR;
 
 ini_set("expose_php","Off");
 ini_set("log_errors",TRUE);
-ini_set("error_log",dirname(__FILE__).$ds."custom_error_log.txt");
+ini_set("error_log",dirname(__FILE__).$ds."logs".$ds."custom_error_log.txt");
 error_reporting(E_ALL ^ E_STRICT);
 mb_internal_encoding("UTF-8");
 mb_regex_encoding("UTF-8");
 
 date_default_timezone_set("Europe/Berlin");
 
-define("APP_ROOT", dirname(__FILE__).$ds."..".$ds."traiwi3".$ds."src".$ds);
-define("CACHE_ROOT", dirname(__FILE__).$ds."..".$ds."traiwi3".$ds."cache".$ds);
-define("VENDOR_ROOT", dirname(__FILE__).$ds."..".$ds."traiwi3".$ds."vendor".$ds);
-define("USERDATA_ROOT", dirname(__FILE__).$ds."..".$ds."traiwi3".$ds."userdata".$ds);
-define("TRAIWI_CORE", "de".$ds."traiwi".$ds."Core".$ds);
+define("APP_ROOT", dirname(__FILE__).$ds."..".$ds."src".$ds);
+define("CACHE_ROOT", dirname(__FILE__).$ds."cache".$ds);
+define("VENDOR_ROOT", dirname(__FILE__).$ds."..".$ds."vendor".$ds);
+define("USERDATA_ROOT", dirname(__FILE__).$ds."uploads".$ds);
+define("TRAIWI_CORE", VENDOR_ROOT."traiwi".$ds."traiwi".$ds."src".$ds."Core".$ds);
 define("CLIENT_DIR", basename(dirname(__FILE__)));
 
-include_once APP_ROOT.TRAIWI_CORE."Classloader.php";
+include_once TRAIWI_CORE."Classloader.php";
 
-$loader = new de\traiwi\Core\Classloader(APP_ROOT);
+$loader = new Traiwi\Core\Classloader(APP_ROOT);
 $loader->register();
 
 if(file_exists(VENDOR_ROOT."autoload.php")) {
 	require_once VENDOR_ROOT."autoload.php";
 }
 
-use de\traiwi\Core\Server;
-use de\traiwi\Core\Services\Config;
+use Traiwi\Core\Server;
+use Traiwi\Core\Services\Config;
 
-$client_config = new Config(dirname(__FILE__));
-$server_config = new Config(APP_ROOT.TRAIWI_CORE);
-
+$client_config = new Config(dirname(__FILE__).$ds."config");
 $client_config->defineConstants();
 
-$server = new Server($client_config, $server_config);
+$server = new Server($client_config);
 $server->run();
 
 ?>			
@@ -202,6 +200,7 @@ $composer = '{
 		$this->installComposer();
 		$this->createFiles();
 		$this->loadVendors();
+		$this->linkBinaries();
 		$this->finish();
 	}
 	
@@ -327,6 +326,15 @@ $composer = '{
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Loading vendors", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 		system("php " . $this->composer . " --working-dir=" . $this->core . " update --prefer-dist");
+	}
+	
+	/**
+	 * 
+	 */
+	public function linkBinaries() {
+		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("Link binaries", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		symlink("vendor" . DIRECTORY_SEPARATOR . "bin", $this->core . "bin");
 	}
 	
 	/**
