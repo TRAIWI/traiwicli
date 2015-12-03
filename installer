@@ -173,16 +173,18 @@ return ConsoleRunner::createHelperSet($entityManager);
 
 $bootstrap = '<?php
 
-require_once "vendor/autoload.php";
+require_once "../../vendor/autoload.php";
 
 use Doctrine\ORM\Tools\Setup;
 use Doctrine\ORM\EntityManager;
 use Traiwi\Core\Services\Config;
 
-$paths = array("vendor/traiwi/traiwi/src/Core/Entities/");
+$paths = array(
+	getcwd() . "/../../vendor/traiwi/traiwi/src/Core/Entities/",
+);
 $isDevMode = true;
 
-$clientConfig = new Config("client/config");
+$clientConfig = new Config("../config");
 
 // the connection configuration
 $dbParams = array(
@@ -214,7 +216,7 @@ $composer = '{
 			"client/.htaccess" => $htaccess,
 			"client/main.php" => $main,
 			"client/cli/cli-config.php" => $cliConfig,
-			"bootstrap.php" => $bootstrap,
+			"client/cli/bootstrap.php" => $bootstrap,
 			"composer.json" => $composer,
 		);
 		
