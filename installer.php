@@ -222,7 +222,7 @@ $composer = '{
 		"scipper/formfile": "dev-master"
     },
     "repositories": [
-		{"type": "composer", "url": "http://toran.myscipper.de/repo/private/"}
+		{"type": "composer", "url": "http://toran2.myscipper.de/repo/private/"}
     ]
 }
 		
@@ -336,7 +336,9 @@ $composer = '{
 			$this->error("Permission for " . $this->composer . " could not be set");
 		}
 		
-		system("php " . $this->composer . " -- --install-dir=" . $this->core);
+		if(!system("php " . $this->composer . " -- --install-dir=" . $this->core)) {
+			$this->error("composer could not be installed: " . error_get_last()["message"]);
+		}
 	}
 	
 	/**
@@ -381,7 +383,10 @@ $composer = '{
 	public function loadVendors() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Loading vendors", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
-		system("php " . $this->composer . " --working-dir=" . $this->core . " update --prefer-dist");
+		
+		if(!system("php " . $this->composer . " --working-dir=" . $this->core . " update --prefer-dist")) {
+			$this->error("composer could not be installed: " . error_get_last()["message"]);
+		}
 	}
 	
 	/**
@@ -390,7 +395,10 @@ $composer = '{
 	public function linkBinaries() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Link binaries", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
-		symlink("vendor" . DIRECTORY_SEPARATOR . "bin", $this->core . "bin");
+		
+		if(!symlink("vendor" . DIRECTORY_SEPARATOR . "bin", $this->core . "bin")) {
+			$this->error("composer could not be installed: " . error_get_last()["message"]);
+		}
 	}
 	
 	/**
