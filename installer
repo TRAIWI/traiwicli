@@ -112,18 +112,31 @@ RewriteBase /
 
 RewriteRule ^uploads/ - [L]
 
-RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.css$ core/$1/Shell/CSS/$2.css [L]
-RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.js$ core/$1/Shell/JS/$2.js [L]
-RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.gif$ core/$1/Shell/Images/$2.gif [L]
-RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.png$ core/$1/Shell/Images/$2.png [L]
-RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.jpg$ core/$1/Shell/Images/$2.jpg [L]
-RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.eot$ core/$1/Shell/Fonts/$2.eot [L]
-RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.eot?#iefix$ core/$1/Shell/Fonts/$2.eot [L]
-RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.woff$ core/$1/Shell/Fonts/$2.woff [L]
-RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.woff2$ core/$1/Shell/Fonts/$2.woff2 [L]
-RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.ttf$ core/$1/Shell/Fonts/$2.ttf [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.css$ vendor/$1/$2/shell/CSS/$3.css [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.js$ vendor/$1/$2/shell/JS/$3.js [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.gif$ vendor/$1/$2/shell/Images/$3.gif [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.png$ vendor/$1/$2/shell/Images/$3.png [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.jpg$ vendor/$1/$2/shelll/Images/$3.jpg [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.eot$ vendor/$1/$2/shell/Fonts/$3.eot [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.eot?#iefix$ vendor/$1/$2/shell/Fonts/$3.eot [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.woff$ vendor/$1/$2/shell/Fonts/$3.woff [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.woff2$ vendor/$1/$2/shell/Fonts/$3.woff2 [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.ttf$ vendor/$1/$2/shell/Fonts/$3.ttf [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.svg#icomoon$ vendor/$1/$2/shell/Fonts/$2.svg [L]
+
+RewriteRule ^(.*)\.css$ own/shell/CSS/$3.css [L]
+RewriteRule ^(.*)\.js$ own/shell/JS/$3.js [L]
+RewriteRule ^(.*)\.gif$ own/shell/Images/$3.gif [L]
+RewriteRule ^(.*)\.png$ own/shell/Images/$3.png [L]
+RewriteRule ^(.*)\.jpg$ own/shelll/Images/$3.jpg [L]
+RewriteRule ^(.*)\.eot$ own/shell/Fonts/$3.eot [L]
+RewriteRule ^(.*)\.eot?#iefix$ own/shell/Fonts/$3.eot [L]
+RewriteRule ^(.*)\.woff$ own/shell/Fonts/$3.woff [L]
+RewriteRule ^(.*)\.woff2$ own/shell/Fonts/$3.woff2 [L]
+RewriteRule ^(.*)\.ttf$ own/shell/Fonts/$3.ttf [L]
+RewriteRule ^(.*)\.svg#icomoon$ own/shell/Fonts/$2.svg [L]		
+		
 RewriteRule ^uploads/(.*)$ uploads/$1 [L]
-RewriteRule ^([a-zA-Z0-9_]*)/(.*)\.svg#icomoon$ core/$1/Shell/Fonts/$2.svg [L]
 RewriteRule ^(.*)\.ico$ - [L]
 RewriteRule ^(.*)$ main.php?url=$1 [QSA,L]			
 ';
@@ -170,6 +183,62 @@ $server = new Server($client_config);
 $server->run();
 
 ?>			
+';
+
+$mainDev = '<?php
+
+ob_start();
+
+$ds = DIRECTORY_SEPARATOR;
+
+ini_set("expose_php","Off");
+ini_set("log_errors",TRUE);
+ini_set("error_log",dirname(__FILE__).$ds."logs".$ds."custom_error_log.txt");
+error_reporting(E_ALL ^ E_STRICT);
+mb_internal_encoding("UTF-8");
+mb_regex_encoding("UTF-8");
+
+date_default_timezone_set("Europe/Berlin");
+
+define("APP_ROOT", dirname(__FILE__).$ds."..".$ds);
+define("SRC_ROOT", dirname(__FILE__).$ds."..".$ds."src".$ds);
+define("CACHE_ROOT", dirname(__FILE__).$ds."cache".$ds);
+define("VENDOR_ROOT", dirname(__FILE__).$ds."..".$ds."vendor".$ds);
+define("USERDATA_ROOT", dirname(__FILE__).$ds."uploads".$ds);
+define("TRAIWI_CORE", VENDOR_ROOT."traiwi".$ds."traiwi".$ds."src".$ds."Core".$ds);
+define("CLIENT_DIR", basename(dirname(__FILE__)));
+		
+		
+$extensions = array("css");
+
+$path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+$ext = pathinfo($path, PATHINFO_EXTENSION);
+if (in_array($ext, $extensions)) {
+	include VENDOR_ROOT . pathinfo($path, PATHINFO_DIRNAME) . "/shell/CSS/" . pathinfo($path, PATHINFO_BASENAME);
+    // let the server handle the request as-is
+    exit();  
+}
+		
+
+include_once TRAIWI_CORE."Classloader.php";
+
+$loader = new Traiwi\Core\Classloader(APP_ROOT);
+$loader->register();
+
+if(file_exists(VENDOR_ROOT."autoload.php")) {
+	require_once VENDOR_ROOT."autoload.php";
+}
+
+use Traiwi\Core\Server;
+use Traiwi\Core\Services\Config;
+
+$client_config = new Config(dirname(__FILE__).$ds."config");
+$client_config->defineConstants();
+
+$server = new Server($client_config);
+$server->run();
+
+?>
 ';
 
 $cliConfig = '<?php
@@ -239,6 +308,7 @@ $composer = '{
 			"client/config/config.ini" => $config,
 			"client/.htaccess" => $htaccess,
 			"client/main.php" => $main,
+			"client/main_dev.php" => $mainDev,
 			"client/cli/cli-config.php" => $cliConfig,
 			"client/cli/bootstrap.php" => $bootstrap,
 			"composer.json" => $composer,
@@ -440,22 +510,42 @@ $composer = '{
 	 */
 	public function linkBinaries() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
-		$this->colorizer->cecho("Link binaries: ", Colorizer::FG_LIGHT_GRAY);
-		
+		$this->colorizer->cecho("Generate Symlinks: ", Colorizer::FG_LIGHT_GRAY);
+
 		if($this->verbose) {
 			echo PHP_EOL;
+		}
+		
+		if($this->verbose) {
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
 			$this->colorizer->cecho("symlink(vendor" . DIRECTORY_SEPARATOR . "bin, bin)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 		}
-		
 		if(!symlink("vendor" . DIRECTORY_SEPARATOR . "bin", $this->core . "bin")) {
 			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
 			$this->error("binaries could not be linked");
 		}
+
+		if($this->verbose) {
+			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+			$this->colorizer->cecho("symlink(.." . DIRECTORY_SEPARATOR . "vendor, client" . DIRECTORY_SEPARATOR . "vendor)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		}
+		if(!symlink(".." . DIRECTORY_SEPARATOR . "vendor", $this->core . "client" . DIRECTORY_SEPARATOR . "vendor")) {
+			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
+			$this->error("vendors could not be linked to client");
+		}
+
+		if($this->verbose) {
+			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+			$this->colorizer->cecho("symlink(.." . DIRECTORY_SEPARATOR . "shell, client" . DIRECTORY_SEPARATOR . "own)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		}
+		if(!symlink(".." . DIRECTORY_SEPARATOR . "shell", $this->core . "client" . DIRECTORY_SEPARATOR . "own")) {
+			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
+			$this->error("own shell could not be linked to client");
+		}
 		
 		if($this->verbose) {
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
-			$this->colorizer->cecho("Linked binaries: ", Colorizer::FG_LIGHT_GRAY);
+			$this->colorizer->cecho("Generated Symlinks: ", Colorizer::FG_LIGHT_GRAY);
 		}
 		
 		$this->colorizer->cecho("✔", Colorizer::FG_GREEN); echo PHP_EOL;
