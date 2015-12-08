@@ -59,9 +59,9 @@ class TraiwiInstallation {
 	
 	/**
 	 * 
-	 * @var resource
+	 * @var boolean
 	 */
-	protected $handle;
+	protected $verbose;
 	
 	
 	/**
@@ -70,7 +70,7 @@ class TraiwiInstallation {
 	public function __construct(Colorizer $colorizer, array $argv) {
 		$this->colorizer = $colorizer;
 		$this->argv = $argv;
-		$this->handle = NULL;
+		$this->verbose = false;
 		$this->folders = array(
 			"client",
 			"client/cache",
@@ -254,6 +254,10 @@ $composer = '{
 			$this->error("No project name given");
 		}
 		
+		if(in_array("-v", $this->argv) || in_array("--verbose", $this->argv)) {
+			$this->verbose = true;
+		}
+		
 		$this->core = trim($this->argv[1]) . "/";
 		$this->composer = $this->core . "composer.phar";
 		$this->targetDir = getcwd() . DIRECTORY_SEPARATOR . $this->core;
@@ -274,13 +278,13 @@ $composer = '{
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Traiwi will be installed in: " . $this->targetDir, Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 		
-		if(isset($this->argv[2]) && $this->argv[2] == "--force") {
+		if(in_array("-f", $this->argv) || in_array("--force", $this->argv)) {
 			$this->rrmdir($this->targetDir);
 		}
 		
 		if(!@mkdir($this->targetDir, 0750, true)){
 			$msg = "You have no permission to install TRAIWI in " . $this->targetDir . PHP_EOL;
-			$msg .= "Append --force to override the current installtion";
+			$msg .= "Append -f or --force to override the current installtion";
 			$this->error($msg);
 		}
 	}
@@ -293,23 +297,30 @@ $composer = '{
 
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Creating folder structure for " . $this->core . ": ", Colorizer::FG_LIGHT_GRAY); 
-		$this->colorizer->cecho($process . " %", Colorizer::FG_GREEN);
+		
+		if($this->verbose) {
+			echo PHP_EOL;
+		}
 		
 		foreach($this->folders as $k => $folder) {
-			$path = $this->targetDir . DIRECTORY_SEPARATOR . $folder;
+			$path = $this->targetDir . $folder;
 			if(!file_exists($path)) {
+				if($this->verbose) {
+					$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+					$this->colorizer->cecho("mkdir(" . $path . ", 0750, true)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+				}
 				mkdir($path, 0750, true);
 			}
 			
 			$process = round((100 / count($this->folders)) * ($k + 1));
-			echo "\r";
-
-			$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
-			$this->colorizer->cecho("Creating folder structure for " . $this->core . ": ", Colorizer::FG_LIGHT_GRAY);
-			$this->colorizer->cecho($process . " %", Colorizer::FG_GREEN);
 		}
 		
-		echo PHP_EOL;
+		if($this->verbose) {
+			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+			$this->colorizer->cecho("Created folder structure for " . $this->core . ": ", Colorizer::FG_LIGHT_GRAY);
+		}
+		
+		$this->colorizer->cecho("✔", Colorizer::FG_GREEN); echo PHP_EOL;
 	}
 	
 	/**
@@ -351,6 +362,11 @@ $composer = '{
 			"Installing composer: "
 		);
 		
+		if($this->verbose) {
+			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+			$this->colorizer->cecho("Installed composer: ", Colorizer::FG_LIGHT_GRAY);
+		}
+		
 		$this->colorizer->cecho("✔", Colorizer::FG_GREEN); echo PHP_EOL;
 	}
 	
@@ -362,14 +378,22 @@ $composer = '{
 
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Creating default system files: ", Colorizer::FG_LIGHT_GRAY);
-		$this->colorizer->cecho($process . " %", Colorizer::FG_GREEN);
+		
+		if($this->verbose) {
+			echo PHP_EOL;
+		}
 	
 		$k = 0;
 		foreach($this->files as $filename => $content) {
-			$path = $this->targetDir . DIRECTORY_SEPARATOR . $filename;
+			$path = $this->targetDir . $filename;
 			if(!file_exists($path)) {
 				if(!file_put_contents($path, $content)) {
 					$this->error($path . " could not be created");
+				}
+				
+				if($this->verbose) {
+					$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+					$this->colorizer->cecho("chmod(" . $path . ", 0644)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 				}
 				
 				if(!chmod($path, 0644)) {
@@ -378,16 +402,16 @@ $composer = '{
 			}
 				
 			$process = round((100 / count($this->files)) * ($k + 1));
-			echo "\r";
 
-			$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
-			$this->colorizer->cecho("Creating default system files: ", Colorizer::FG_LIGHT_GRAY);
-			$this->colorizer->cecho($process . " %", Colorizer::FG_GREEN);
-			
 			$k++;
 		}
 		
-		echo PHP_EOL;
+		if($this->verbose) {
+			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+			$this->colorizer->cecho("Created default system files: ", Colorizer::FG_LIGHT_GRAY);
+		}
+		
+		$this->colorizer->cecho("✔", Colorizer::FG_GREEN); echo PHP_EOL;
 	}
 	
 	/**
@@ -402,6 +426,12 @@ $composer = '{
 			"Loading vendors: "
 		);
 		
+		if($this->verbose) {
+			echo PHP_EOL;
+			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+			$this->colorizer->cecho("Loaded vendors: ", Colorizer::FG_LIGHT_GRAY);
+		}
+		
 		$this->colorizer->cecho("✔", Colorizer::FG_GREEN); echo PHP_EOL;
 	}
 	
@@ -412,9 +442,20 @@ $composer = '{
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Link binaries: ", Colorizer::FG_LIGHT_GRAY);
 		
+		if($this->verbose) {
+			echo PHP_EOL;
+			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+			$this->colorizer->cecho("symlink(vendor" . DIRECTORY_SEPARATOR . "bin, bin)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		}
+		
 		if(!symlink("vendor" . DIRECTORY_SEPARATOR . "bin", $this->core . "bin")) {
 			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
 			$this->error("binaries could not be linked");
+		}
+		
+		if($this->verbose) {
+			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+			$this->colorizer->cecho("Linked binaries: ", Colorizer::FG_LIGHT_GRAY);
 		}
 		
 		$this->colorizer->cecho("✔", Colorizer::FG_GREEN); echo PHP_EOL;
@@ -467,23 +508,20 @@ $composer = '{
 	
 	/**
 	 * 
-	 */
-	public function closeHandle() {
-		if(!is_null($this->handle)) {
-			pclose($this->handle);
-			$this->handle = NULL;
-		}
-	}
-	
-	/**
-	 * 
 	 * @param string $cmd
 	 * @param string $action
 	 */
 	public function execCommand($cmd, $action) {
 		$result = array();
 		$status = NULL;
-		system($cmd . " 1> /dev/null 2> " . getcwd() . "/traiwi_install.log", $status);
+		
+		if($this->verbose) {
+			$cmd .= " 2>&1 | tee " . getcwd() . "/traiwi_install.log";
+		} else {
+			$cmd .= " 1> /dev/null 2>> " . getcwd() . "/traiwi_install.log";
+		}
+		
+		system($cmd, $status);
 		
 		if($status > 0) {
 			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
