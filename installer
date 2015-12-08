@@ -57,6 +57,12 @@ class TraiwiInstallation {
 	 */
 	protected $argv;
 	
+	/**
+	 * 
+	 * @var resource
+	 */
+	protected $handle;
+	
 	
 	/**
 	 * 
@@ -64,6 +70,7 @@ class TraiwiInstallation {
 	public function __construct(Colorizer $colorizer, array $argv) {
 		$this->colorizer = $colorizer;
 		$this->argv = $argv;
+		$this->handle = NULL;
 		$this->folders = array(
 			"client",
 			"client/cache",
@@ -222,7 +229,7 @@ $composer = '{
 		"scipper/formfile": "dev-master"
     },
     "repositories": [
-		{"type": "composer", "url": "http://toran2.myscipper.de/repo/private/"}
+		{"type": "composer", "url": "http://toran.myscipper.de/repo/private/"}
     ]
 }
 		
@@ -310,7 +317,7 @@ $composer = '{
 	 */
 	public function installComposer() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);;
-		$this->colorizer->cecho("Installing composer ", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("Installing composer: ", Colorizer::FG_LIGHT_GRAY);
 		
 		if(!function_exists('curl_init')){
 			$this->error("The php cURL extension is not installed");
@@ -323,22 +330,28 @@ $composer = '{
 		$output = curl_exec($ch);
 		
 		if(curl_errno($ch)) {
+			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
 			$this->error(curl_error($ch));
 		}
 		
 		curl_close($ch);
 		
 		if(!file_put_contents($this->composer, $output)) {
+			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
 			$this->error($this->composer . " could not be created");
 		}
 		
 		if(!chmod($this->composer, 0755)) {
+			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
 			$this->error("Permission for " . $this->composer . " could not be set");
 		}
+
+		$this->execCommand(
+			"php " . $this->composer . " -- --install-dir=" . $this->core, 
+			"Installing composer: "
+		);
 		
-		if(!system("php " . $this->composer . " -- --install-dir=" . $this->core)) {
-			$this->error("composer could not be installed: " . error_get_last()["message"]);
-		}
+		$this->colorizer->cecho("✔", Colorizer::FG_GREEN); echo PHP_EOL;
 	}
 	
 	/**
@@ -382,11 +395,14 @@ $composer = '{
 	 */
 	public function loadVendors() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
-		$this->colorizer->cecho("Loading vendors", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("Loading vendors: ", Colorizer::FG_LIGHT_GRAY); 
 		
-		if(!system("php " . $this->composer . " --working-dir=" . $this->core . " update --prefer-dist")) {
-			$this->error("composer could not be installed: " . error_get_last()["message"]);
-		}
+		$this->execCommand(
+			"php " . $this->composer . " --working-dir=" . $this->core . " update --prefer-dist", 
+			"Loading vendors: "
+		);
+		
+		$this->colorizer->cecho("✔", Colorizer::FG_GREEN); echo PHP_EOL;
 	}
 	
 	/**
@@ -394,11 +410,14 @@ $composer = '{
 	 */
 	public function linkBinaries() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
-		$this->colorizer->cecho("Link binaries", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("Link binaries: ", Colorizer::FG_LIGHT_GRAY);
 		
 		if(!symlink("vendor" . DIRECTORY_SEPARATOR . "bin", $this->core . "bin")) {
-			$this->error("composer could not be installed: " . error_get_last()["message"]);
+			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
+			$this->error("binaries could not be linked");
 		}
+		
+		$this->colorizer->cecho("✔", Colorizer::FG_GREEN); echo PHP_EOL;
 	}
 	
 	/**
@@ -444,6 +463,32 @@ $composer = '{
 	public function error($error) {
 		$this->colorizer->cecho($error, Colorizer::FG_RED); echo PHP_EOL; echo PHP_EOL;
 		exit;
+	}
+	
+	/**
+	 * 
+	 */
+	public function closeHandle() {
+		if(!is_null($this->handle)) {
+			pclose($this->handle);
+			$this->handle = NULL;
+		}
+	}
+	
+	/**
+	 * 
+	 * @param string $cmd
+	 * @param string $action
+	 */
+	public function execCommand($cmd, $action) {
+		$result = array();
+		$status = NULL;
+		system($cmd . " 1> /dev/null 2> " . getcwd() . "/traiwi_install.log", $status);
+		
+		if($status > 0) {
+			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
+			$this->error("See traiwi_install.log for more details. ");
+		}
 	}
 
 }
