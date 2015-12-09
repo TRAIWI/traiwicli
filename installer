@@ -323,6 +323,9 @@ $composer = '{
 		if(!isset($this->argv[1])) {
 			$this->error("No project name given");
 		}
+		if(preg_match("/[^A-Za-z0-9]/", $this->argv[1])) {
+			$this->error("Invalid project name. Only uppercase and lowercase letters and numbers are allowed.");
+		}
 		
 		if(in_array("-v", $this->argv) || in_array("--verbose", $this->argv)) {
 			$this->verbose = true;
@@ -559,10 +562,28 @@ $composer = '{
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 		$this->colorizer->cecho("Congratulation!", Colorizer::FG_GREEN); echo PHP_EOL;
 		$this->colorizer->cecho("TRAIWI was successfully installed to: " . $this->targetDir, Colorizer::FG_GREEN); echo PHP_EOL;echo PHP_EOL;
-		$this->colorizer->cecho("Available public packages, you can install with 'php " . $this->composer . " require vendor/package', are: ", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho("Available packages, you can install with 'php " . $this->composer . " require vendor/package', are: ", Colorizer::FG_GREEN); echo PHP_EOL;
 		$this->colorizer->cecho(" - traiwi/traiwi: The Application Core, already installed", Colorizer::FG_GREEN); echo PHP_EOL;
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
+
+		$this->colorizer->cecho("What's next?", Colorizer::FG_ORANGE); echo PHP_EOL;
+		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("                   "); echo PHP_EOL;
+
+		$this->colorizer->cecho("To let your base installtion of TRAIWI work, there are 3 simple steps to do:", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; echo PHP_EOL;
+		
+		$this->colorizer->cecho("1. ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("Create a database with: ", Colorizer::FG_LIGHT_GRAY);
+		$this->colorizer->cecho("mysql -u root -p -e 'CREATE DATABASE " . @$this->argv[1] . " CHARACTER SET utf8 COLLATE utf8_general_ci';", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
+		
+		$this->colorizer->cecho("2. ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("Create the database scheme with the doctrine wrapper 'traiwicli': ", Colorizer::FG_LIGHT_GRAY);
+		$this->colorizer->cecho("php bin/traiwicli orm:schema-tool:update --force", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
+		
+		$this->colorizer->cecho("3. ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("Run the php server to start development: ", Colorizer::FG_LIGHT_GRAY);
+		$this->colorizer->cecho("php -S localhost:8080 client/main_dev.php", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL; echo PHP_EOL;
 	}
 	
 	public function rrmdir($dir) {
