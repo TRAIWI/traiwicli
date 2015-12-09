@@ -71,23 +71,6 @@ class TraiwiInstallation {
 		$this->colorizer = $colorizer;
 		$this->argv = $argv;
 		$this->verbose = false;
-		$this->folders = array(
-			"client",
-			"client/cache",
-			"client/config",
-			"client/cli",
-			"client/uploads",
-			"client/logs",
-			"src",
-			"src/Core",
-			"src/Modules",
-			"shell",
-			"shell/CSS",
-			"shell/JS",
-			"shell/Images",
-			"shell/Fonts",
-			"shell/Templates",
-		);
 		
 $config = '[mysql]
 host="127.0.0.1"
@@ -209,14 +192,44 @@ define("TRAIWI_CORE", VENDOR_ROOT."traiwi".$ds."traiwi".$ds."src".$ds."Core".$ds
 define("CLIENT_DIR", basename(dirname(__FILE__)));
 		
 		
-$extensions = array("css");
+$extensions = array(
+	"css" => "text/css",
+	"js" => "text/javascript",
+	"png" => "image/png",
+	"jpg" => "image/jpeg",
+	"jpeg" => "image/jpeg",
+	"gif" => "image/gif",
+	"eot" => "application/vnd.ms-fontobject",
+	"woff" => "application/font-woff",
+	"woff2" => "application/font-woff",
+	"ttf" => "application/font-ttf",
+	"svg" => "image/svg+xml",
+);
+		
+$folders = array(
+	"css" => "CSS",
+	"js" => "JS",
+	"png" => "Images",
+	"jpg" => "Images",
+	"jpeg" => "Images",
+	"gif" => "Images",
+	"eot" => "Fonts",
+	"woff" => "Fonts",
+	"woff2" => "Fonts",
+	"ttf" => "Fonts",
+	"svg" => "Fonts",
+);
 
 $path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
 $ext = pathinfo($path, PATHINFO_EXTENSION);
-if (in_array($ext, $extensions)) {
-	include VENDOR_ROOT . pathinfo($path, PATHINFO_DIRNAME) . "/shell/CSS/" . pathinfo($path, PATHINFO_BASENAME);
-    // let the server handle the request as-is
-    exit();  
+if(array_key_exists($ext, $extensions)) {
+	$file = VENDOR_ROOT . pathinfo($path, PATHINFO_DIRNAME) . "/shell/" . $folders[$ext] . "/" . pathinfo($path, PATHINFO_BASENAME);
+	if(is_readable($file)) {
+		header("Content-Type: " . $extensions[$ext]);
+		readfile($file);
+	}
+	
+    return;  
 }
 		
 
@@ -312,6 +325,24 @@ $composer = '{
 			"client/cli/cli-config.php" => $cliConfig,
 			"client/cli/bootstrap.php" => $bootstrap,
 			"composer.json" => $composer,
+		);
+		
+		$this->folders = array(
+			"client",
+			"client/cache",
+			"client/config",
+			"client/cli",
+			"client/uploads",
+			"client/logs",
+			"src",
+			"src/Core",
+			"src/Modules",
+			"shell",
+			"shell/CSS",
+			"shell/JS",
+			"shell/Images",
+			"shell/Fonts",
+			"shell/Templates",
 		);
 		
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
