@@ -87,6 +87,18 @@ class TraiwiInstallation {
 	 */
 	protected $ds;
 	
+	/**
+	 * 
+	 * @var string
+	 */	
+	protected $toranUser;
+	
+	/**
+	 * 
+	 * @var string
+	 */	
+	protected $toranPass;
+	
 	
 	/**
 	 * 
@@ -409,6 +421,7 @@ $composer = '{
 		$this->createFolders();
 		$this->installComposer();
 		$this->createFiles();
+		$this->enterToranUserdata();
 		$this->loadVendors();
 		$this->linkBinaries();
 		$this->finish();
@@ -459,6 +472,7 @@ $composer = '{
 		}
 		
 		if($this->verbose) {
+			echo PHP_EOL;
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
 			$this->colorizer->cecho("Created folder structure for " . $this->core . ": ", Colorizer::FG_LIGHT_GRAY);
 		}
@@ -481,6 +495,7 @@ $composer = '{
 		curl_setopt($ch, CURLOPT_URL, "https://getcomposer.org/installer");
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
 		$output = curl_exec($ch);
 		
 		if(curl_errno($ch)) {
@@ -506,6 +521,7 @@ $composer = '{
 		);
 		
 		if($this->verbose) {
+			echo PHP_EOL;
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
 			$this->colorizer->cecho("Installed composer: ", Colorizer::FG_LIGHT_GRAY);
 		}
@@ -550,6 +566,7 @@ $composer = '{
 		}
 		
 		if($this->verbose) {
+			echo PHP_EOL;
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
 			$this->colorizer->cecho("Created default system files: ", Colorizer::FG_LIGHT_GRAY);
 		}
@@ -560,12 +577,30 @@ $composer = '{
 	/**
 	 * 
 	 */
+	public function enterToranUserdata() {
+		$handle = fopen("php://stdin","r");
+		
+		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("Enter toran userdata to enable the next step 'Loading vendors' ", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("    - username: ", Colorizer::FG_LIGHT_GRAY);
+		$this->toranUser = escapeshellcmd(trim(fgets($handle)));
+		echo PHP_EOL;
+		$this->colorizer->cecho("    - password: ", Colorizer::FG_LIGHT_GRAY);
+		$this->toranPass = escapeshellcmd(trim(fgets($handle)));
+		echo PHP_EOL;
+		
+		fclose($handle);
+	}
+	
+	/**
+	 * 
+	 */
 	public function loadVendors() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Loading vendors: ", Colorizer::FG_LIGHT_GRAY); 
 		
 		$this->execCommand(
-			"php " . $this->composer . " --working-dir=" . $this->core . " update --prefer-dist", 
+			"php " . $this->composer . " --working-dir=" . $this->core . ($this->isWindows ? " install" : " update --prefer-dist"), 
 			"Loading vendors: "
 		);
 		
@@ -617,6 +652,7 @@ $composer = '{
 		}
 		
 		if($this->verbose) {
+			echo PHP_EOL;
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
 			$this->colorizer->cecho("Generated Symlinks: ", Colorizer::FG_LIGHT_GRAY);
 		}
@@ -709,9 +745,17 @@ $composer = '{
 		$status = NULL;
 		
 		if($this->verbose) {
-			$cmd .= " 2>&1 | tee " . getcwd() . "/traiwi_install.log";
+			if($this->isWindows) {
+				$cmd .= " 1> " . getcwd() . $this->ds . "traiwi_install.log 2>&1";
+			} else {
+				$cmd .= " 2>&1 | tee " . getcwd() . $this->ds . "traiwi_install.log";
+			}
 		} else {
-			$cmd .= " 1> /dev/null 2>> " . getcwd() . "/traiwi_install.log";
+			if($this->isWindows) {
+				$cmd .= " 1> NUL 2> " . getcwd() . $this->ds . "traiwi_install.log";
+			} else {
+				$cmd .= " 1> /dev/null 2> " . getcwd() . $this->ds . "traiwi_install.log";
+			}
 		}
 		
 		system($cmd, $status);
