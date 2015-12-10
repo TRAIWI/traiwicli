@@ -912,8 +912,7 @@ class Colorizer {
 	 */
 	public function hide() {
 		if(!$this->isWindows) {
-			echo "\033[30;40m";
-			flush();
+			system("stty -echo");
 		}
 	}
 	
@@ -922,8 +921,7 @@ class Colorizer {
 	 */
 	public function restore() {
 		if(!$this->isWindows) {
-			echo "\033[0m";
-			flush();
+			system("stty echo");
 		}
 	}
 	
