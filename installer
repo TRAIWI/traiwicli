@@ -602,19 +602,31 @@ $composer = '{
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 
-		$this->colorizer->cecho("To let your base installtion of TRAIWI work, there are 3 simple steps to do:", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; echo PHP_EOL;
+		$this->colorizer->cecho("To let your base installtion of TRAIWI work, there are 5 simple steps to do:", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; echo PHP_EOL;
 		
 		$this->colorizer->cecho("1. ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("Change directory to the installion folder: ", Colorizer::FG_LIGHT_GRAY);
+		$this->colorizer->cecho("cd " . $this->targetDir , Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
+		
+		
+		$this->colorizer->cecho("2. ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Create a database with: ", Colorizer::FG_LIGHT_GRAY);
 		$this->colorizer->cecho("mysql -u root -p -e 'CREATE DATABASE " . @$this->argv[1] . " CHARACTER SET utf8 COLLATE utf8_general_ci';", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 		
-		$this->colorizer->cecho("2. ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("3. ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Create the database scheme with the doctrine wrapper 'traiwicli': ", Colorizer::FG_LIGHT_GRAY);
 		$this->colorizer->cecho("php bin/traiwicli orm:schema-tool:update --force", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 		
-		$this->colorizer->cecho("3. ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("4. ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Run the php server to start development: ", Colorizer::FG_LIGHT_GRAY);
-		$this->colorizer->cecho("php -S localhost:8080 client/main_dev.php", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL; echo PHP_EOL;
+		$this->colorizer->cecho("php -S localhost:8080 client/main_dev.php", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
+		
+		$this->colorizer->cecho("5. ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("Log in with the following data: ", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; 
+		$this->colorizer->cecho("    - email: ", Colorizer::FG_LIGHT_GRAY); 
+		$this->colorizer->cecho("user@traiwi.de", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL; 
+		$this->colorizer->cecho("    - password: ", Colorizer::FG_LIGHT_GRAY); 
+		$this->colorizer->cecho("secure", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;  echo PHP_EOL; 
 	}
 	
 	public function rrmdir($dir) {
