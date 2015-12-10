@@ -585,9 +585,32 @@ $composer = '{
 		$this->colorizer->cecho("    - username: ", Colorizer::FG_LIGHT_GRAY);
 		$this->toranUser = escapeshellcmd(trim(fgets($handle)));
 		echo PHP_EOL;
+		
 		$this->colorizer->cecho("    - password: ", Colorizer::FG_LIGHT_GRAY);
+		$this->colorizer->hide();
 		$this->toranPass = escapeshellcmd(trim(fgets($handle)));
+		$this->colorizer->restore();
 		echo PHP_EOL;
+		
+		$composerHome = $this->execCommand(
+			"php " . $this->core . "composer.phar config home", 
+			"Storing credentials"
+		);
+		
+		if(!file_exists($composerHome . $this->ds . "auth.json")) {
+			touch($composerHome . $this->ds . "auth.json");
+		}
+		
+		$authJson = file_get_contents($composerHome . $this->ds . "auth.json");
+		$authArray = json_decode($authJson, JSON_OBJECT_AS_ARRAY);
+		
+		$authArray["http-basic"]["toran.myscipper.de"] = array(
+			"username" => $this->toranUser,
+			"password" => $this->toranPass
+		);
+		
+		$newAuthJson = json_encode($authArray, JSON_FORCE_OBJECT);
+		file_put_contents($composerHome . $this->ds . "auth.json", $newAuthJson);
 		
 		fclose($handle);
 	}
@@ -739,6 +762,7 @@ $composer = '{
 	 * 
 	 * @param string $cmd
 	 * @param string $action
+	 * @return string
 	 */
 	public function execCommand($cmd, $action) {
 		$result = array();
@@ -752,18 +776,24 @@ $composer = '{
 			}
 		} else {
 			if($this->isWindows) {
-				$cmd .= " 1> NUL 2> " . getcwd() . $this->ds . "traiwi_install.log";
+				$cmd .= " 2> " . getcwd() . $this->ds . "traiwi_install.log";
 			} else {
-				$cmd .= " 1> /dev/null 2> " . getcwd() . $this->ds . "traiwi_install.log";
+				$cmd .= " 2> " . getcwd() . $this->ds . "traiwi_install.log";
 			}
 		}
 		
-		system($cmd, $status);
+		exec($cmd, $result, $status);
 		
 		if($status > 0) {
 			$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
 			$this->error("See traiwi_install.log for more details. ");
 		}
+		
+		if(isset($result[0])) {
+			return $result[0];
+		}
+		
+		return "";
 	}
 
 }
@@ -875,6 +905,26 @@ class Colorizer {
 	 */
 	public function isWindows() {
 		return $this->isWindows;
+	}
+	
+	/**
+	 * 
+	 */
+	public function hide() {
+		if(!$this->isWindows) {
+			echo "\033[30;40m";
+			flush();
+		}
+	}
+	
+	/**
+	 * 
+	 */
+	public function restore() {
+		if(!$this->isWindows) {
+			echo "\033[0m";
+			flush();
+		}
 	}
 	
 }
