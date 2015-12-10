@@ -63,12 +63,49 @@ class TraiwiInstallation {
 	 */
 	protected $verbose;
 	
+	/**
+	 * 
+	 * @var boolean
+	 */
+	protected $isWindows;
+	
+	/**
+	 * 
+	 * @var string
+	 */
+	protected $symbolOk;
+	
+	/**
+	 * 
+	 * @var string
+	 */
+	protected $symbolError;
+	
+	/**
+	 * 
+	 * @var string
+	 */
+	protected $ds;
+	
 	
 	/**
 	 * 
 	 */
 	public function __construct(Colorizer $colorizer, array $argv) {
+		$this->isWindows = strtoupper(substr(PHP_OS, 0, 3)) === "WIN";
+		$this->ds = DIRECTORY_SEPARATOR;
+		
 		$this->colorizer = $colorizer;
+		$this->colorizer->setIsWindows($this->isWindows);
+		
+		if(!$this->isWindows) {
+			$this->symbolOk = "✔";
+			$this->symbolError = "✘";
+		} else {
+			$this->symbolOk = "OK";
+			$this->symbolError = "X";
+		}
+		
 		$this->argv = $argv;
 		$this->verbose = false;
 		
@@ -264,8 +301,10 @@ return ConsoleRunner::createHelperSet($entityManager);
 ?>';
 
 $bootstrap = '<?php
+		
+$ds = DIRECTORY_SEPARATOR;
 
-require_once "../../vendor/autoload.php";
+require_once ".." . $ds . ".." . $ds . "vendor" . $ds . "autoload.php";
 
 use Doctrine\ORM\Tools\Setup;
 use Doctrine\ORM\EntityManager;
@@ -275,11 +314,11 @@ use Doctrine\ORM\Events;
 use Traiwi\Core\Services\Config;
 
 $paths = array(
-	getcwd() . "/../../vendor/traiwi/traiwi/src/Core/Entities/",
+	getcwd() . $ds . ".." . $ds . ".." . $ds . "vendor" . $ds . "traiwi" . $ds . "traiwi" . $ds . "src" . $ds . "Core" . $ds . "Entities" . $ds,
 );
 $isDevMode = true;
 
-$clientConfig = new Config("../config");
+$clientConfig = new Config(".." . $ds . "config");
 
 // the connection configuration
 $dbParams = array(
@@ -318,31 +357,31 @@ $composer = '{
 ';
 		
 		$this->files = array(
-			"client/config/config.ini" => $config,
-			"client/.htaccess" => $htaccess,
-			"client/main.php" => $main,
-			"client/main_dev.php" => $mainDev,
-			"client/cli/cli-config.php" => $cliConfig,
-			"client/cli/bootstrap.php" => $bootstrap,
+			"client" . $this->ds . "config" . $this->ds . "config.ini" => $config,
+			"client" . $this->ds . ".htaccess" => $htaccess,
+			"client" . $this->ds . "main.php" => $main,
+			"client" . $this->ds . "main_dev.php" => $mainDev,
+			"client" . $this->ds . "cli" . $this->ds . "cli-config.php" => $cliConfig,
+			"client" . $this->ds . "cli" . $this->ds . "bootstrap.php" => $bootstrap,
 			"composer.json" => $composer,
 		);
 		
 		$this->folders = array(
 			"client",
-			"client/cache",
-			"client/config",
-			"client/cli",
-			"client/uploads",
-			"client/logs",
+			"client" . $this->ds . "cache",
+			"client" . $this->ds . "config",
+			"client" . $this->ds . "cli",
+			"client" . $this->ds . "uploads",
+			"client" . $this->ds . "logs",
 			"src",
-			"src/Core",
-			"src/Modules",
+			"src" . $this->ds . "Core",
+			"src" . $this->ds . "Modules",
 			"shell",
-			"shell/CSS",
-			"shell/JS",
-			"shell/Images",
-			"shell/Fonts",
-			"shell/Templates",
+			"shell" . $this->ds . "CSS",
+			"shell" . $this->ds . "JS",
+			"shell" . $this->ds . "Images",
+			"shell" . $this->ds . "Fonts",
+			"shell" . $this->ds . "Templates",
 		);
 		
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
@@ -362,9 +401,9 @@ $composer = '{
 			$this->verbose = true;
 		}
 		
-		$this->core = trim($this->argv[1]) . "/";
+		$this->core = trim($this->argv[1]) . $this->ds;
 		$this->composer = $this->core . "composer.phar";
-		$this->targetDir = getcwd() . DIRECTORY_SEPARATOR . $this->core;
+		$this->targetDir = getcwd() . $this->ds . $this->core;
 		
 		$this->checkPermission();
 		$this->createFolders();
@@ -424,7 +463,7 @@ $composer = '{
 			$this->colorizer->cecho("Created folder structure for " . $this->core . ": ", Colorizer::FG_LIGHT_GRAY);
 		}
 		
-		$this->colorizer->cecho("✔", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho($this->symbolOk, Colorizer::FG_GREEN); echo PHP_EOL;
 	}
 	
 	/**
@@ -445,19 +484,19 @@ $composer = '{
 		$output = curl_exec($ch);
 		
 		if(curl_errno($ch)) {
-			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
+			$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
 			$this->error(curl_error($ch));
 		}
 		
 		curl_close($ch);
 		
 		if(!file_put_contents($this->composer, $output)) {
-			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
+			$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
 			$this->error($this->composer . " could not be created");
 		}
 		
 		if(!chmod($this->composer, 0755)) {
-			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
+			$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
 			$this->error("Permission for " . $this->composer . " could not be set");
 		}
 
@@ -471,7 +510,7 @@ $composer = '{
 			$this->colorizer->cecho("Installed composer: ", Colorizer::FG_LIGHT_GRAY);
 		}
 		
-		$this->colorizer->cecho("✔", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho($this->symbolOk, Colorizer::FG_GREEN); echo PHP_EOL;
 	}
 	
 	/**
@@ -515,7 +554,7 @@ $composer = '{
 			$this->colorizer->cecho("Created default system files: ", Colorizer::FG_LIGHT_GRAY);
 		}
 		
-		$this->colorizer->cecho("✔", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho($this->symbolOk, Colorizer::FG_GREEN); echo PHP_EOL;
 	}
 	
 	/**
@@ -536,7 +575,7 @@ $composer = '{
 			$this->colorizer->cecho("Loaded vendors: ", Colorizer::FG_LIGHT_GRAY);
 		}
 		
-		$this->colorizer->cecho("✔", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho($this->symbolOk, Colorizer::FG_GREEN); echo PHP_EOL;
 	}
 	
 	/**
@@ -552,28 +591,28 @@ $composer = '{
 		
 		if($this->verbose) {
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
-			$this->colorizer->cecho("symlink(vendor" . DIRECTORY_SEPARATOR . "bin, bin)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+			$this->colorizer->cecho("symlink(vendor" . $this->ds . "bin, bin)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 		}
-		if(!symlink("vendor" . DIRECTORY_SEPARATOR . "bin", $this->core . "bin")) {
-			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
+		if(!symlink("vendor" . $this->ds . "bin", $this->core . "bin")) {
+			$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
 			$this->error("binaries could not be linked");
 		}
 
 		if($this->verbose) {
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
-			$this->colorizer->cecho("symlink(.." . DIRECTORY_SEPARATOR . "vendor, client" . DIRECTORY_SEPARATOR . "vendor)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+			$this->colorizer->cecho("symlink(.." . $this->ds . "vendor, client" . $this->ds . "vendor)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 		}
-		if(!symlink(".." . DIRECTORY_SEPARATOR . "vendor", $this->core . "client" . DIRECTORY_SEPARATOR . "vendor")) {
-			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
+		if(!symlink(".." . $this->ds . "vendor", $this->core . "client" . $this->ds . "vendor")) {
+			$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
 			$this->error("vendors could not be linked to client");
 		}
 
 		if($this->verbose) {
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
-			$this->colorizer->cecho("symlink(.." . DIRECTORY_SEPARATOR . "shell, client" . DIRECTORY_SEPARATOR . "own)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+			$this->colorizer->cecho("symlink(.." . $this->ds . "shell, client" . $this->ds . "own)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 		}
-		if(!symlink(".." . DIRECTORY_SEPARATOR . "shell", $this->core . "client" . DIRECTORY_SEPARATOR . "own")) {
-			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
+		if(!symlink(".." . $this->ds . "shell", $this->core . "client" . $this->ds . "own")) {
+			$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
 			$this->error("own shell could not be linked to client");
 		}
 		
@@ -582,7 +621,7 @@ $composer = '{
 			$this->colorizer->cecho("Generated Symlinks: ", Colorizer::FG_LIGHT_GRAY);
 		}
 		
-		$this->colorizer->cecho("✔", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho($this->symbolOk, Colorizer::FG_GREEN); echo PHP_EOL;
 	}
 	
 	/**
@@ -678,7 +717,7 @@ $composer = '{
 		system($cmd, $status);
 		
 		if($status > 0) {
-			$this->colorizer->cecho("✘", Colorizer::FG_RED); echo PHP_EOL;
+			$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
 			$this->error("See traiwi_install.log for more details. ");
 		}
 	}
@@ -695,7 +734,7 @@ $composer = '{
  *
  */
 class Colorizer {
-
+	
 	const FG_BLACK = "0;30";
 	const FG_DARK_GRAY = "1;30";
 	const FG_BLUE = "0;34";
@@ -722,6 +761,12 @@ class Colorizer {
 	const BG_MAGENTA = "45";
 	const BG_CYAN = "46";
 	const BG_LIGHT_GRAY = "47";
+	
+	/**
+	 * 
+	 * @var boolean
+	 */
+	protected $isWindows;
 
 
 	/**
@@ -734,16 +779,20 @@ class Colorizer {
 	public function cecho($string, $fgColor = NULL, $bgColor = NULL) {
 		$coloredString = "";
 		$fgConst = $this->getConstName($fgColor);
-		if(!is_null($fgConst)) {
+		if(!is_null($fgConst) && !$this->isWindows) {
 			$coloredString .= "\033[" . constant("self::" . $fgConst) . "m";
 		}
 
 		$bgConst = $this->getConstName($bgColor);
-		if(!is_null($bgConst)) {
+		if(!is_null($bgConst) && !$this->isWindows) {
 			$coloredString .= "\033[" . constant("self::" . $bgConst) . "m";
 		}
 
-		$coloredString .=  $string . "\033[0m";
+		$coloredString .=  $string;
+		
+		if(!$this->isWindows) {
+			$coloredString .=  "\033[0m";
+		}
 
 		echo $coloredString;
 	}
@@ -767,6 +816,23 @@ class Colorizer {
 
 		return $constName;
 	}
+	
+	/**
+	 * 
+	 * @param boolean $value
+	 */
+	public function setIsWindows($value) {
+		$this->isWindows = (boolean) $value;
+	}
+	
+	/**
+	 * 
+	 * @return boolean
+	 */
+	public function isWindows() {
+		return $this->isWindows;
+	}
+	
 }
 
 ?>
