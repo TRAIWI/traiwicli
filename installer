@@ -2,7 +2,6 @@
 
 <?php
 
-
 new TraiwiInstallation(new Colorizer(), is_array($argv) ? $argv : array());
 
 /**
@@ -272,7 +271,7 @@ $folders = array(
 $path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
 $ext = pathinfo($path, PATHINFO_EXTENSION);
 if(array_key_exists($ext, $extensions)) {
-	$file = VENDOR_ROOT . pathinfo($path, PATHINFO_DIRNAME) . "/shell/" . $folders[$ext] . "/" . pathinfo($path, PATHINFO_BASENAME);
+	$file = VENDOR_ROOT . pathinfo($path, PATHINFO_DIRNAME) . $ds . "shell" . $ds . $folders[$ext] . $ds . pathinfo($path, PATHINFO_BASENAME);
 	if(is_readable($file)) {
 		header("Content-Type: " . $extensions[$ext]);
 		readfile($file);
@@ -402,16 +401,7 @@ $composer = '{
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 
-		if(!isset($this->argv[1])) {
-			$this->error("No project name given");
-		}
-		if(preg_match("/[^A-Za-z0-9]/", $this->argv[1])) {
-			$this->error("Invalid project name. Only uppercase and lowercase letters and numbers are allowed.");
-		}
-		
-		if(in_array("-v", $this->argv) || in_array("--verbose", $this->argv)) {
-			$this->verbose = true;
-		}
+		$this->checkParameter();
 		
 		$this->core = trim($this->argv[1]) . $this->ds;
 		$this->composer = $this->core . "composer.phar";
@@ -702,29 +692,39 @@ $composer = '{
 
 		$this->colorizer->cecho("To let your base installtion of TRAIWI work, there are 5 simple steps to do:", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; echo PHP_EOL;
 		
+		$step1 = "cd " . $this->targetDir;
 		$this->colorizer->cecho("1. ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Change directory to the installion folder: ", Colorizer::FG_LIGHT_GRAY);
-		$this->colorizer->cecho("cd " . $this->targetDir , Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
+		$this->colorizer->cecho($step1 , Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 		
-		
+		$step2 = "mysql -u root -p -e 'CREATE DATABASE " . @$this->argv[1] . " CHARACTER SET utf8 COLLATE utf8_general_ci';";
 		$this->colorizer->cecho("2. ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Create a database with: ", Colorizer::FG_LIGHT_GRAY);
-		$this->colorizer->cecho("mysql -u root -p -e 'CREATE DATABASE " . @$this->argv[1] . " CHARACTER SET utf8 COLLATE utf8_general_ci';", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
+		$this->colorizer->cecho($step2, Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 		
+		$step3 = "php bin/traiwicli orm:schema-tool:update --force";
 		$this->colorizer->cecho("3. ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Create the database scheme with the doctrine wrapper 'traiwicli': ", Colorizer::FG_LIGHT_GRAY);
-		$this->colorizer->cecho("php bin/traiwicli orm:schema-tool:update --force", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
+		$this->colorizer->cecho($step3, Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 		
+		$step4 = "php -S localhost:8080 client/main_dev.php";
 		$this->colorizer->cecho("4. ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Run the php server to start development: ", Colorizer::FG_LIGHT_GRAY);
-		$this->colorizer->cecho("php -S localhost:8080 client/main_dev.php", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
+		$this->colorizer->cecho($step4, Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 		
 		$this->colorizer->cecho("5. ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Log in with the following data: ", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; 
 		$this->colorizer->cecho("    - email: ", Colorizer::FG_LIGHT_GRAY); 
 		$this->colorizer->cecho("user@traiwi.de", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL; 
 		$this->colorizer->cecho("    - password: ", Colorizer::FG_LIGHT_GRAY); 
-		$this->colorizer->cecho("secure", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;  echo PHP_EOL; 
+		$this->colorizer->cecho("secure", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;  echo PHP_EOL;
+		
+		$this->colorizer->cecho("OR: all in one: ", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+
+		$this->colorizer->cecho($step1 . " ;\\", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
+		$this->colorizer->cecho($step2 . " \\", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
+		$this->colorizer->cecho($step3 . " ;\\", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
+		$this->colorizer->cecho($step4, Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 	}
 	
 	public function rrmdir($dir) {
@@ -753,9 +753,12 @@ $composer = '{
 	 * 
 	 * @param string $error
 	 */
-	public function error($error) {
+	public function error($error, $exit = true) {
 		$this->colorizer->cecho($error, Colorizer::FG_RED); echo PHP_EOL; echo PHP_EOL;
-		exit;
+		
+		if($exit) {
+			exit;
+		}
 	}
 	
 	/**
@@ -794,6 +797,47 @@ $composer = '{
 		}
 		
 		return "";
+	}
+	
+	/**
+	 * 
+	 */
+	public function checkParameter() {
+		if(in_array("-h", $this->argv) || in_array("--help", $this->argv)) {
+			$this->displayHelp();
+		}
+		
+		if(!isset($this->argv[1]) || substr($this->argv[1], 0, 1) == "-") {
+			$this->error("No project name given", false);
+			
+			$this->displayHelp();
+		}
+		
+		if(preg_match("/[^A-Za-z0-9]/", $this->argv[1])) {
+			$this->error("Invalid project name. Only uppercase and lowercase letters and numbers are allowed.", false);
+			
+			$this->displayHelp();
+		}
+		
+		if(in_array("-v", $this->argv) || in_array("--verbose", $this->argv)) {
+			$this->verbose = true;
+		}	
+	}
+	
+	/**
+	 * 
+	 */
+	public function displayHelp() {
+		$this->colorizer->cecho("Usage:", Colorizer::FG_ORANGE); echo PHP_EOL;
+		$this->colorizer->cecho("  project [options]", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; echo PHP_EOL;
+		
+		$this->colorizer->cecho("Options:", Colorizer::FG_ORANGE); echo PHP_EOL;
+		$this->colorizer->cecho("  -h, --help \t\t Display this help", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho("  -f, --force \t\t Overwrites the given project folder", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho("  -v, --verbose \t Detailed information about every step", Colorizer::FG_GREEN); echo PHP_EOL;
+		
+		
+		exit;
 	}
 
 }
