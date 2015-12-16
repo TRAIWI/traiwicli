@@ -209,6 +209,7 @@ use Traiwi\Core\Services\Config;
 
 $client_config = new Config(dirname(__FILE__).$ds."config");
 $client_config->defineConstants();
+$client_config->initBundles();
 
 $server = new Server($client_config);
 $server->run();
@@ -295,6 +296,7 @@ use Traiwi\Core\Services\Config;
 
 $client_config = new Config(dirname(__FILE__).$ds."config");
 $client_config->defineConstants();
+$client_config->initBundles();
 
 $server = new Server($client_config);
 $server->run();

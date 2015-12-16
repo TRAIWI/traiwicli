@@ -583,7 +583,7 @@ $composer = '{
 		echo PHP_EOL;
 		
 		$composerHome = $this->execCommand(
-			"php " . $this->core . "composer.phar config home", 
+			"php " . $this->composer . " --working-dir=" . $this->core . " config home", 
 			"Storing credentials"
 		);
 		
