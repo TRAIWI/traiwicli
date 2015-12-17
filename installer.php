@@ -151,11 +151,12 @@ class TraiwiInstallation {
 		$this->targetDir = getcwd() . $this->ds . $this->core;
 		$this->namespace = ucfirst(strtolower(trim($this->argv[1])));
 		
-$config = '[mysql]
+$config = function($argv, $mysqlUser, $mysqlPass, $namespace) {
+	return '[mysql]
 host="127.0.0.1"
-dbname="' . $this->argv[1] . '"
-user="' . $this->mysqlUser . '"
-password="' . $this->mysqlUser . '"
+dbname="' . $argv[1] . '"
+user="' . $mysqlUser . '"
+password="' . $mysqlPass . '"
 
 [system]
 default_lang="de"
@@ -170,8 +171,9 @@ user_resolve_target="Traiwi"
 
 [bundles]
 traiwi="Traiwi\TraiwiBundle"
-' . strtolower($this->namespace) . '="' . $this->namespace . '\\' . $this->namespace . 'Bundle"
+' . strtolower($namespace) . '="' . $namespace . '\\' . $namespace . 'Bundle"
 ';
+};
 
 $htaccess = 'RewriteEngine On
 RewriteBase /
@@ -232,7 +234,7 @@ define("CLIENT_DIR", basename(dirname(__FILE__)));
 
 include_once TRAIWI_CORE."Classloader.php";
 
-$loader = new Traiwi\Core\Classloader(APP_ROOT);
+$loader = new Traiwi\Core\Classloader(SRC_ROOT);
 $loader->register();
 
 if(file_exists(VENDOR_ROOT."autoload.php")) {
@@ -319,7 +321,7 @@ if(array_key_exists($ext, $extensions)) {
 
 include_once TRAIWI_CORE."Classloader.php";
 
-$loader = new Traiwi\Core\Classloader(APP_ROOT);
+$loader = new Traiwi\Core\Classloader(SRC_ROOT);
 $loader->register();
 
 if(file_exists(VENDOR_ROOT."autoload.php")) {
@@ -371,9 +373,9 @@ $clientConfig = new Config(".." . $ds . "config");
 // the connection configuration
 $dbParams = array(
 	"driver"   => "pdo_mysql",
-	"user"     => $clientConfig->get("user"),
-	"password" => $clientConfig->get("password"),
-	"dbname"   => $clientConfig->get("dbname"),
+	"user"     => $clientConfig->get("mysql", "user"),
+	"password" => $clientConfig->get("mysql", "password"),
+	"dbname"   => $clientConfig->get("mysql", "dbname"),
 );
 
 $config = Setup::createAnnotationMetadataConfiguration($paths, $isDevMode);
@@ -383,7 +385,7 @@ $rtel = new ResolveTargetEntityListener();
 
 $rtel->addResolveTargetEntity(
 	"Traiwi\Core\Entities\BaseUserInterface", 
-	$clientConfig->get("user_resolve_target") . "\Core\Entities\MysUser", 
+	$clientConfig->get("system", "user_resolve_target") . "\Core\Entities\MysUser", 
 	array()
 );
 $evm->addEventListener(Events::loadClassMetadata, $rtel);
@@ -394,7 +396,7 @@ $entityManager = EntityManager::create($dbParams, $config, $evm);
 		
 $composer = '{
     "require": {
-		"traiwi/traiwi": "dev-master",
+		"traiwi/traiwi": "dev-develop",
 		"scipper/formfile": "dev-master"
     },
     "repositories": [
@@ -445,7 +447,7 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	 * @see \Traiwi\Core\Interfaces\TraiwiBundleInterface::getModuleNamespace()
 	 */
 	public function getModuleNamespace() {
-		return __NAMESPACE__ . "\\Modules\\";
+		return __NAMESPACE__ . "\\\\Modules\\\\";
 	}
 	
 }
@@ -484,6 +486,7 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 		$this->checkPermission();
 		$this->createFolders();
 		$this->installComposer();
+		$this->createComposerJson();
 		$this->enterCredentials();
 		$this->createFiles();
 		$this->loadVendors();
@@ -596,9 +599,14 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	/**
 	 * 
 	 */
-	public function enterCredentials() {
-		$handle = fopen("php://stdin","r");
+	public function createComposerJson() {
+		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("Creating composer json: ", Colorizer::FG_LIGHT_GRAY);
 		
+		if($this->verbose) {
+			echo PHP_EOL;
+		}
+	
 		$filename = "composer.json";
 		$path = $this->targetDir . $filename;
 		$content = $this->files[$filename];
@@ -615,6 +623,15 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 		if(!chmod($path, 0644)) {
 			$this->error("Permission for " . $path . " could not be set");
 		}
+		
+		$this->colorizer->cecho($this->symbolOk, Colorizer::FG_GREEN); echo PHP_EOL;
+	}
+	
+	/**
+	 * 
+	 */
+	public function enterCredentials() {
+		$handle = fopen("php://stdin","r");
 		
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Enter toran private repository credentials: ", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
@@ -680,6 +697,10 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 		foreach($this->files as $filename => $content) {
 			$path = $this->targetDir . $filename;
 			if(!file_exists($path)) {
+				if(is_callable($content)) {
+					$content = $content($this->argv, $this->mysqlUser, $this->mysqlPass, $this->namespace);
+				}
+				
 				if(!file_put_contents($path, $content)) {
 					$this->error($path . " could not be created");
 				}
