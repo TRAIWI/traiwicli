@@ -36,6 +36,12 @@ class TraiwiInstallation {
 	 * 
 	 * @var string
 	 */
+	protected $namespace;
+	
+	/**
+	 * 
+	 * @var string
+	 */
 	protected $composer;
 	
 	/**
@@ -98,6 +104,18 @@ class TraiwiInstallation {
 	 */	
 	protected $toranPass;
 	
+	/**
+	 * 
+	 * @var string
+	 */	
+	protected $mysqlUser;
+	
+	/**
+	 * 
+	 * @var string
+	 */	
+	protected $mysqlPass;
+	
 	
 	/**
 	 * 
@@ -117,14 +135,27 @@ class TraiwiInstallation {
 			$this->symbolError = "X";
 		}
 		
+		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("                   "); echo PHP_EOL;
+		$this->colorizer->cecho("TRAIWI Installation", Colorizer::FG_ORANGE); echo PHP_EOL;
+		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("                   "); echo PHP_EOL;
+
 		$this->argv = $argv;
+		$this->checkParameter();
+		
 		$this->verbose = false;
+
+		$this->core = trim($this->argv[1]) . $this->ds;
+		$this->composer = $this->core . "composer.phar";
+		$this->targetDir = getcwd() . $this->ds . $this->core;
+		$this->namespace = ucfirst(strtolower(trim($this->argv[1])));
 		
 $config = '[mysql]
 host="127.0.0.1"
-dbname="' . @$this->argv[1] . '"
-user="root"
-password="123"
+dbname="' . $this->argv[1] . '"
+user="' . $this->mysqlUser . '"
+password="' . $this->mysqlUser . '"
 
 [system]
 default_lang="de"
@@ -136,6 +167,10 @@ lowest_role="GUEST"
 is_dev_mode="true"
 custom_repository_factory=""
 user_resolve_target="Traiwi"
+
+[bundles]
+traiwi="Traiwi\TraiwiBundle"
+' . strtolower($this->namespace) . '="' . $this->namespace . '\\' . $this->namespace . 'Bundle"
 ';
 
 $htaccess = 'RewriteEngine On
@@ -209,6 +244,7 @@ use Traiwi\Core\Services\Config;
 
 $client_config = new Config(dirname(__FILE__).$ds."config");
 $client_config->defineConstants();
+$client_config->initBundles();
 
 $server = new Server($client_config);
 $server->run();
@@ -295,6 +331,7 @@ use Traiwi\Core\Services\Config;
 
 $client_config = new Config(dirname(__FILE__).$ds."config");
 $client_config->defineConstants();
+$client_config->initBundles();
 
 $server = new Server($client_config);
 $server->run();
@@ -366,6 +403,54 @@ $composer = '{
 }
 		
 ';
+
+$bundle = '<?php
+
+namespace ' . $this->namespace . ';
+
+use Traiwi\Core\Interfaces\TraiwiBundleInterface;
+
+class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
+	
+	/**
+	 *
+	 * {@inheritDoc}
+	 * @see \Traiwi\Core\Interfaces\TraiwiBundleInterface::getPath()
+	 */
+	public function getPath() {
+		return dirname(__FILE__) . DIRECTORY_SEPARATOR;
+	}
+	
+	/**
+	 *
+	 * {@inheritDoc}
+	 * @see \Traiwi\Core\Interfaces\TraiwiBundleInterface::getTemplatePath()
+	 */
+	public function getTemplatePath() {
+		return $this->getPath() . ".." . DIRECTORY_SEPARATOR . "shell" . DIRECTORY_SEPARATOR . "Templates" . DIRECTORY_SEPARATOR;
+	}
+	
+	/**
+	 *
+	 * {@inheritDoc}
+	 * @see \Traiwi\Core\Interfaces\TraiwiBundleInterface::getModulePath()
+	 */
+	public function getModulePath() {
+		return $this->getPath() . "Modules" . DIRECTORY_SEPARATOR;
+	}
+	
+	/**
+	 *
+	 * {@inheritDoc}
+	 * @see \Traiwi\Core\Interfaces\TraiwiBundleInterface::getModuleNamespace()
+	 */
+	public function getModuleNamespace() {
+		return __NAMESPACE__ . "\\Modules\\";
+	}
+	
+}
+
+?>';
 		
 		$this->files = array(
 			"client" . $this->ds . "config" . $this->ds . "config.ini" => $config,
@@ -375,6 +460,7 @@ $composer = '{
 			"client" . $this->ds . "cli" . $this->ds . "cli-config.php" => $cliConfig,
 			"client" . $this->ds . "cli" . $this->ds . "bootstrap.php" => $bootstrap,
 			"composer.json" => $composer,
+			"src" . $this->ds . $this->namespace . "Bundle.php" => $bundle,
 		);
 		
 		$this->folders = array(
@@ -395,23 +481,11 @@ $composer = '{
 			"shell" . $this->ds . "Templates",
 		);
 		
-		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
-		$this->colorizer->cecho("                   "); echo PHP_EOL;
-		$this->colorizer->cecho("TRAIWI Installation", Colorizer::FG_ORANGE); echo PHP_EOL;
-		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
-		$this->colorizer->cecho("                   "); echo PHP_EOL;
-
-		$this->checkParameter();
-		
-		$this->core = trim($this->argv[1]) . $this->ds;
-		$this->composer = $this->core . "composer.phar";
-		$this->targetDir = getcwd() . $this->ds . $this->core;
-		
 		$this->checkPermission();
 		$this->createFolders();
 		$this->installComposer();
+		$this->enterCredentials();
 		$this->createFiles();
-		$this->enterToranUserdata();
 		$this->loadVendors();
 		$this->linkBinaries();
 		$this->finish();
@@ -522,6 +596,76 @@ $composer = '{
 	/**
 	 * 
 	 */
+	public function enterCredentials() {
+		$handle = fopen("php://stdin","r");
+		
+		$filename = "composer.json";
+		$path = $this->targetDir . $filename;
+		$content = $this->files[$filename];
+		if(!file_put_contents($path, $content)) {
+			$this->error($path . " could not be created");
+		}
+		unset($this->files[$path]);
+		
+		if($this->verbose) {
+			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+			$this->colorizer->cecho("chmod(" . $path . ", 0644)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		}
+		
+		if(!chmod($path, 0644)) {
+			$this->error("Permission for " . $path . " could not be set");
+		}
+		
+		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("Enter toran private repository credentials: ", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("    - username: ", Colorizer::FG_LIGHT_GRAY);
+		$this->toranUser = escapeshellcmd(trim(fgets($handle)));
+		echo PHP_EOL;
+		
+		$this->colorizer->cecho("    - password: ", Colorizer::FG_LIGHT_GRAY);
+		$this->colorizer->hide();
+		$this->toranPass = escapeshellcmd(trim(fgets($handle)));
+		$this->colorizer->restore();
+		echo PHP_EOL;
+		
+		$composerHome = $this->execCommand(
+			"php " . $this->composer . " --working-dir=" . $this->core . " config home", 
+			"Storing credentials"
+		);
+		
+		if(!file_exists($composerHome . $this->ds . "auth.json")) {
+			touch($composerHome . $this->ds . "auth.json");
+		}
+		
+		$authJson = file_get_contents($composerHome . $this->ds . "auth.json");
+		$authArray = json_decode($authJson, JSON_OBJECT_AS_ARRAY);
+		
+		$authArray["http-basic"]["toran.myscipper.de"] = array(
+			"username" => $this->toranUser,
+			"password" => $this->toranPass
+		);
+		
+		$newAuthJson = json_encode($authArray, JSON_FORCE_OBJECT);
+		file_put_contents($composerHome . $this->ds . "auth.json", $newAuthJson);
+		
+		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("Enter mysql credentials: ", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("    - username: ", Colorizer::FG_LIGHT_GRAY);
+		$this->mysqlUser = escapeshellcmd(trim(fgets($handle)));
+		echo PHP_EOL;
+		
+		$this->colorizer->cecho("    - password: ", Colorizer::FG_LIGHT_GRAY);
+		$this->colorizer->hide();
+		$this->mysqlPass = escapeshellcmd(trim(fgets($handle)));
+		$this->colorizer->restore();
+		echo PHP_EOL;
+		
+		fclose($handle);
+	}
+	
+	/**
+	 * 
+	 */
 	public function createFiles() {
 		$process = 0;
 
@@ -567,47 +711,6 @@ $composer = '{
 	/**
 	 * 
 	 */
-	public function enterToranUserdata() {
-		$handle = fopen("php://stdin","r");
-		
-		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
-		$this->colorizer->cecho("Enter toran userdata to enable the next step 'Loading vendors' ", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
-		$this->colorizer->cecho("    - username: ", Colorizer::FG_LIGHT_GRAY);
-		$this->toranUser = escapeshellcmd(trim(fgets($handle)));
-		echo PHP_EOL;
-		
-		$this->colorizer->cecho("    - password: ", Colorizer::FG_LIGHT_GRAY);
-		$this->colorizer->hide();
-		$this->toranPass = escapeshellcmd(trim(fgets($handle)));
-		$this->colorizer->restore();
-		echo PHP_EOL;
-		
-		$composerHome = $this->execCommand(
-			"php " . $this->composer . " --working-dir=" . $this->core . " config home", 
-			"Storing credentials"
-		);
-		
-		if(!file_exists($composerHome . $this->ds . "auth.json")) {
-			touch($composerHome . $this->ds . "auth.json");
-		}
-		
-		$authJson = file_get_contents($composerHome . $this->ds . "auth.json");
-		$authArray = json_decode($authJson, JSON_OBJECT_AS_ARRAY);
-		
-		$authArray["http-basic"]["toran.myscipper.de"] = array(
-			"username" => $this->toranUser,
-			"password" => $this->toranPass
-		);
-		
-		$newAuthJson = json_encode($authArray, JSON_FORCE_OBJECT);
-		file_put_contents($composerHome . $this->ds . "auth.json", $newAuthJson);
-		
-		fclose($handle);
-	}
-	
-	/**
-	 * 
-	 */
 	public function loadVendors() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Loading vendors: ", Colorizer::FG_LIGHT_GRAY); 
@@ -644,15 +747,6 @@ $composer = '{
 		if(!symlink("vendor" . $this->ds . "bin", $this->core . "bin")) {
 			$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
 			$this->error("binaries could not be linked");
-		}
-
-		if($this->verbose) {
-			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
-			$this->colorizer->cecho("symlink(.." . $this->ds . "vendor, client" . $this->ds . "vendor)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
-		}
-		if(!symlink(".." . $this->ds . "vendor", $this->core . "client" . $this->ds . "vendor")) {
-			$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
-			$this->error("vendors could not be linked to client");
 		}
 
 		if($this->verbose) {
@@ -697,7 +791,7 @@ $composer = '{
 		$this->colorizer->cecho("Change directory to the installion folder: ", Colorizer::FG_LIGHT_GRAY);
 		$this->colorizer->cecho($step1 , Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 		
-		$step2 = "mysql -u root -p -e 'CREATE DATABASE " . @$this->argv[1] . " CHARACTER SET utf8 COLLATE utf8_general_ci';";
+		$step2 = "mysql -u " . $this->mysqlUser . " -p" . $this->mysqlPass . " -e 'CREATE DATABASE " . @$this->argv[1] . " CHARACTER SET utf8 COLLATE utf8_general_ci';";
 		$this->colorizer->cecho("2. ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Create a database with: ", Colorizer::FG_LIGHT_GRAY);
 		$this->colorizer->cecho($step2, Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
