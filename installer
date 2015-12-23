@@ -731,7 +731,7 @@ custom_repository_factory=""
 user_resolve_target="Traiwi"
 		
 [bundles]
-traiwi="Traiwi\TraiwiBundle"
+traiwi="Traiwi\Traiwicore\TraiwiBundle"
 ' . strtolower($vendor . $package) . '="' . ucfirst(strtolower($vendor)) . '\\' . ucfirst(strtolower($package)) . '\\' . ucfirst(strtolower($package)) . 'Bundle"
 ';
 	}
@@ -806,15 +806,15 @@ define("CLIENT_DIR", basename(dirname(__FILE__)));
 		
 include_once TRAIWI_CORE."Classloader.php";
 		
-$loader = new Traiwi\Core\Classloader(SRC_ROOT);
+$loader = new Traiwi\Traiwicore\Core\Classloader(SRC_ROOT);
 $loader->register();
 		
 if(file_exists(VENDOR_ROOT."autoload.php")) {
 	require_once VENDOR_ROOT."autoload.php";
 }
 		
-use Traiwi\Core\Server;
-use Traiwi\Core\Services\Config;
+use Traiwi\Traiwicore\Core\Server;
+use Traiwi\Traiwicore\Core\Services\Config;
 		
 $client_config = new Config(dirname(__FILE__).$ds."config");
 $client_config->defineConstants();
@@ -899,15 +899,15 @@ if(array_key_exists($ext, $extensions)) {
 		
 include_once TRAIWI_CORE."Classloader.php";
 		
-$loader = new Traiwi\Core\Classloader(SRC_ROOT);
+$loader = new Traiwi\Traiwicore\Core\Classloader(SRC_ROOT);
 $loader->register();
 		
 if(file_exists(VENDOR_ROOT."autoload.php")) {
 	require_once VENDOR_ROOT."autoload.php";
 }
 		
-use Traiwi\Core\Server;
-use Traiwi\Core\Services\Config;
+use Traiwi\Traiwicore\Core\Server;
+use Traiwi\Traiwicore\Core\Services\Config;
 		
 $client_config = new Config(dirname(__FILE__).$ds."config");
 $client_config->defineConstants();
@@ -951,7 +951,7 @@ use Doctrine\ORM\EntityManager;
 use Doctrine\Common\EventManager;
 use Doctrine\ORM\Tools\ResolveTargetEntityListener;
 use Doctrine\ORM\Events;
-use Traiwi\Core\Services\Config;
+use Traiwi\Traiwicore\Core\Services\Config;
 
 $paths = array(
 	getcwd() . $ds . ".." . $ds . ".." . $ds . "vendor" . $ds . "traiwi" . $ds . "traiwi" . $ds . "src" . $ds . "Core" . $ds . "Entities" . $ds,
@@ -974,7 +974,7 @@ $evm  = new EventManager();
 $rtel = new ResolveTargetEntityListener();
 
 $rtel->addResolveTargetEntity(
-	"Traiwi\Core\Entities\BaseUserInterface", 
+	"Traiwi\Traiwicore\Core\Entities\BaseUserInterface", 
 	$clientConfig->get("system", "user_resolve_target") . "\Core\Entities\MysUser", 
 	array()
 );
@@ -993,7 +993,7 @@ $entityManager = EntityManager::create($dbParams, $config, $evm);
 		return '{
 	"name": "' . $projectname . '",
     "require": {
-		"traiwi/traiwi": "dev-develop",
+		"traiwi/traiwicore": "dev-develop",
 		"scipper/formfile": "dev-master"
     },
     "repositories": [
@@ -1009,14 +1009,14 @@ $entityManager = EntityManager::create($dbParams, $config, $evm);
 
 namespace ' . $vendor . "\\" . $package . ';
 
-use Traiwi\Core\Interfaces\TraiwiBundleInterface;
+use Traiwi\Traiwicore\Core\Interfaces\TraiwiBundleInterface;
 
 class ' . $package . 'Bundle implements TraiwiBundleInterface {
 	
 	/**
 	 *
 	 * {@inheritDoc}
-	 * @see \Traiwi\Core\Interfaces\TraiwiBundleInterface::getPath()
+	 * @see \Traiwi\Traiwicore\Core\Interfaces\TraiwiBundleInterface::getPath()
 	 */
 	public function getPath() {
 		return dirname(__FILE__) . DIRECTORY_SEPARATOR;
@@ -1025,7 +1025,7 @@ class ' . $package . 'Bundle implements TraiwiBundleInterface {
 	/**
 	 *
 	 * {@inheritDoc}
-	 * @see \Traiwi\Core\Interfaces\TraiwiBundleInterface::getTemplatePath()
+	 * @see \Traiwi\Traiwicore\Core\Interfaces\TraiwiBundleInterface::getTemplatePath()
 	 */
 	public function getTemplatePath() {
 		return $this->getPath() . ".." . DIRECTORY_SEPARATOR . "shell" . DIRECTORY_SEPARATOR . "Templates" . DIRECTORY_SEPARATOR;
@@ -1034,7 +1034,7 @@ class ' . $package . 'Bundle implements TraiwiBundleInterface {
 	/**
 	 *
 	 * {@inheritDoc}
-	 * @see \Traiwi\Core\Interfaces\TraiwiBundleInterface::getModulePath()
+	 * @see \Traiwi\Traiwicore\Core\Interfaces\TraiwiBundleInterface::getModulePath()
 	 */
 	public function getModulePath() {
 		return $this->getPath() . "Modules" . DIRECTORY_SEPARATOR;
@@ -1043,7 +1043,7 @@ class ' . $package . 'Bundle implements TraiwiBundleInterface {
 	/**
 	 *
 	 * {@inheritDoc}
-	 * @see \Traiwi\Core\Interfaces\TraiwiBundleInterface::getModuleNamespace()
+	 * @see \Traiwi\Traiwicore\Core\Interfaces\TraiwiBundleInterface::getModuleNamespace()
 	 */
 	public function getModuleNamespace() {
 		return __NAMESPACE__ . "\\\\Modules\\\\";
