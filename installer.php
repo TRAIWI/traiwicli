@@ -2,7 +2,13 @@
 
 <?php
 
-new TraiwiInstallation(new Colorizer(), is_array($argv) ? $argv : array());
+$cliArgs = is_array($argv) ? $argv : array();
+$traiwiCli = new TraiwiInstallation(
+	new Colorizer(), 
+	new TraiwiFileContainer(),
+	$cliArgs
+);
+$traiwiCli->install();
 
 /**
  * 
@@ -22,6 +28,12 @@ class TraiwiInstallation {
 	
 	/**
 	 * 
+	 * @var TraiwiFileContainer
+	 */
+	protected $fileContainer;
+	
+	/**
+	 * 
 	 * @var string
 	 */
 	protected $targetDir;
@@ -30,7 +42,19 @@ class TraiwiInstallation {
 	 * 
 	 * @var string
 	 */
-	protected $core;
+	protected $projectname;
+	
+	/**
+	 * 
+	 * @var string
+	 */
+	protected $vendor;
+	
+	/**
+	 * 
+	 * @var string
+	 */
+	protected $package;
 	
 	/**
 	 * 
@@ -120,12 +144,13 @@ class TraiwiInstallation {
 	/**
 	 * 
 	 */
-	public function __construct(Colorizer $colorizer, array $argv) {
+	public function __construct(Colorizer $colorizer, TraiwiFileContainer $container, array $argv) {
 		$this->isWindows = strtoupper(substr(PHP_OS, 0, 3)) === "WIN";
 		$this->ds = DIRECTORY_SEPARATOR;
 		
 		$this->colorizer = $colorizer;
 		$this->colorizer->setIsWindows($this->isWindows);
+		$this->fileContainer = $container;
 		
 		if(!$this->isWindows) {
 			$this->symbolOk = "✔";
@@ -135,334 +160,18 @@ class TraiwiInstallation {
 			$this->symbolError = "X";
 		}
 		
-		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
-		$this->colorizer->cecho("                   "); echo PHP_EOL;
-		$this->colorizer->cecho("TRAIWI Installation", Colorizer::FG_ORANGE); echo PHP_EOL;
-		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
-		$this->colorizer->cecho("                   "); echo PHP_EOL;
-
 		$this->argv = $argv;
-		$this->checkParameter();
-		
 		$this->verbose = false;
-
-		$this->core = trim($this->argv[1]) . $this->ds;
-		$this->composer = $this->core . "composer.phar";
-		$this->targetDir = getcwd() . $this->ds . $this->core;
-		$this->namespace = ucfirst(strtolower(trim($this->argv[1])));
-		
-$config = function($argv, $mysqlUser, $mysqlPass, $namespace) {
-	return '[mysql]
-host="127.0.0.1"
-dbname="' . $argv[1] . '"
-user="' . $mysqlUser . '"
-password="' . $mysqlPass . '"
-
-[system]
-default_lang="de"
-default_title="TRAIWI"
-logging="on"
-password_salt="123"
-password_reset_salt="456"
-lowest_role="GUEST"
-is_dev_mode="true"
-custom_repository_factory=""
-user_resolve_target="Traiwi"
-
-[bundles]
-traiwi="Traiwi\TraiwiBundle"
-' . strtolower($namespace) . '="' . $namespace . '\\' . $namespace . 'Bundle"
-';
-};
-
-$htaccess = 'RewriteEngine On
-RewriteBase /
-
-RewriteRule ^uploads/ - [L]
-
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.css$ vendor/$1/$2/shell/CSS/$3.css [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.js$ vendor/$1/$2/shell/JS/$3.js [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.gif$ vendor/$1/$2/shell/Images/$3.gif [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.png$ vendor/$1/$2/shell/Images/$3.png [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.jpg$ vendor/$1/$2/shelll/Images/$3.jpg [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.eot$ vendor/$1/$2/shell/Fonts/$3.eot [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.eot?#iefix$ vendor/$1/$2/shell/Fonts/$3.eot [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.woff$ vendor/$1/$2/shell/Fonts/$3.woff [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.woff2$ vendor/$1/$2/shell/Fonts/$3.woff2 [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.ttf$ vendor/$1/$2/shell/Fonts/$3.ttf [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.svg#icomoon$ vendor/$1/$2/shell/Fonts/$2.svg [L]
-
-RewriteRule ^(.*)\.css$ own/shell/CSS/$3.css [L]
-RewriteRule ^(.*)\.js$ own/shell/JS/$3.js [L]
-RewriteRule ^(.*)\.gif$ own/shell/Images/$3.gif [L]
-RewriteRule ^(.*)\.png$ own/shell/Images/$3.png [L]
-RewriteRule ^(.*)\.jpg$ own/shelll/Images/$3.jpg [L]
-RewriteRule ^(.*)\.eot$ own/shell/Fonts/$3.eot [L]
-RewriteRule ^(.*)\.eot?#iefix$ own/shell/Fonts/$3.eot [L]
-RewriteRule ^(.*)\.woff$ own/shell/Fonts/$3.woff [L]
-RewriteRule ^(.*)\.woff2$ own/shell/Fonts/$3.woff2 [L]
-RewriteRule ^(.*)\.ttf$ own/shell/Fonts/$3.ttf [L]
-RewriteRule ^(.*)\.svg#icomoon$ own/shell/Fonts/$2.svg [L]		
-		
-RewriteRule ^uploads/(.*)$ uploads/$1 [L]
-RewriteRule ^(.*)\.ico$ - [L]
-RewriteRule ^(.*)$ main.php?url=$1 [QSA,L]			
-';
-
-$main = '<?php
-
-ob_start();
-
-$ds = DIRECTORY_SEPARATOR;
-
-ini_set("expose_php","Off");
-ini_set("log_errors",TRUE);
-ini_set("error_log",dirname(__FILE__).$ds."logs".$ds."custom_error_log.txt");
-error_reporting(E_ALL ^ E_STRICT);
-mb_internal_encoding("UTF-8");
-mb_regex_encoding("UTF-8");
-
-date_default_timezone_set("Europe/Berlin");
-
-define("APP_ROOT", dirname(__FILE__).$ds."..".$ds);
-define("SRC_ROOT", dirname(__FILE__).$ds."..".$ds."src".$ds);
-define("CACHE_ROOT", dirname(__FILE__).$ds."cache".$ds);
-define("VENDOR_ROOT", dirname(__FILE__).$ds."..".$ds."vendor".$ds);
-define("USERDATA_ROOT", dirname(__FILE__).$ds."uploads".$ds);
-define("TRAIWI_CORE", VENDOR_ROOT."traiwi".$ds."traiwi".$ds."src".$ds."Core".$ds);
-define("CLIENT_DIR", basename(dirname(__FILE__)));
-
-include_once TRAIWI_CORE."Classloader.php";
-
-$loader = new Traiwi\Core\Classloader(SRC_ROOT);
-$loader->register();
-
-if(file_exists(VENDOR_ROOT."autoload.php")) {
-	require_once VENDOR_ROOT."autoload.php";
-}
-
-use Traiwi\Core\Server;
-use Traiwi\Core\Services\Config;
-
-$client_config = new Config(dirname(__FILE__).$ds."config");
-$client_config->defineConstants();
-$client_config->initBundles();
-
-$server = new Server($client_config);
-$server->run();
-
-?>			
-';
-
-$mainDev = '<?php
-
-ob_start();
-
-$ds = DIRECTORY_SEPARATOR;
-
-ini_set("expose_php","Off");
-ini_set("log_errors",TRUE);
-ini_set("error_log",dirname(__FILE__).$ds."logs".$ds."custom_error_log.txt");
-error_reporting(E_ALL ^ E_STRICT);
-mb_internal_encoding("UTF-8");
-mb_regex_encoding("UTF-8");
-
-date_default_timezone_set("Europe/Berlin");
-
-define("APP_ROOT", dirname(__FILE__).$ds."..".$ds);
-define("SRC_ROOT", dirname(__FILE__).$ds."..".$ds."src".$ds);
-define("CACHE_ROOT", dirname(__FILE__).$ds."cache".$ds);
-define("VENDOR_ROOT", dirname(__FILE__).$ds."..".$ds."vendor".$ds);
-define("USERDATA_ROOT", dirname(__FILE__).$ds."uploads".$ds);
-define("TRAIWI_CORE", VENDOR_ROOT."traiwi".$ds."traiwi".$ds."src".$ds."Core".$ds);
-define("CLIENT_DIR", basename(dirname(__FILE__)));
-		
-		
-$extensions = array(
-	"css" => "text/css",
-	"js" => "text/javascript",
-	"png" => "image/png",
-	"jpg" => "image/jpeg",
-	"jpeg" => "image/jpeg",
-	"gif" => "image/gif",
-	"eot" => "application/vnd.ms-fontobject",
-	"woff" => "application/font-woff",
-	"woff2" => "application/font-woff",
-	"ttf" => "application/font-ttf",
-	"svg" => "image/svg+xml",
-);
-		
-$folders = array(
-	"css" => "CSS",
-	"js" => "JS",
-	"png" => "Images",
-	"jpg" => "Images",
-	"jpeg" => "Images",
-	"gif" => "Images",
-	"eot" => "Fonts",
-	"woff" => "Fonts",
-	"woff2" => "Fonts",
-	"ttf" => "Fonts",
-	"svg" => "Fonts",
-);
-
-$path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
-$ext = pathinfo($path, PATHINFO_EXTENSION);
-if(array_key_exists($ext, $extensions)) {
-	$file = VENDOR_ROOT . pathinfo($path, PATHINFO_DIRNAME) . $ds . "shell" . $ds . $folders[$ext] . $ds . pathinfo($path, PATHINFO_BASENAME);
-	if(is_readable($file)) {
-		header("Content-Type: " . $extensions[$ext]);
-		readfile($file);
-	}
-	
-    return;  
-}
-		
-
-include_once TRAIWI_CORE."Classloader.php";
-
-$loader = new Traiwi\Core\Classloader(SRC_ROOT);
-$loader->register();
-
-if(file_exists(VENDOR_ROOT."autoload.php")) {
-	require_once VENDOR_ROOT."autoload.php";
-}
-
-use Traiwi\Core\Server;
-use Traiwi\Core\Services\Config;
-
-$client_config = new Config(dirname(__FILE__).$ds."config");
-$client_config->defineConstants();
-$client_config->initBundles();
-
-$server = new Server($client_config);
-$server->run();
-
-?>
-';
-
-$cliConfig = '<?php
-		
-use Doctrine\ORM\Tools\Console\ConsoleRunner;
-
-require_once "bootstrap.php";
-		
-return ConsoleRunner::createHelperSet($entityManager);
-?>';
-
-$bootstrap = '<?php
-		
-$ds = DIRECTORY_SEPARATOR;
-
-require_once ".." . $ds . ".." . $ds . "vendor" . $ds . "autoload.php";
-
-use Doctrine\ORM\Tools\Setup;
-use Doctrine\ORM\EntityManager;
-use Doctrine\Common\EventManager;
-use Doctrine\ORM\Tools\ResolveTargetEntityListener;
-use Doctrine\ORM\Events;
-use Traiwi\Core\Services\Config;
-
-$paths = array(
-	getcwd() . $ds . ".." . $ds . ".." . $ds . "vendor" . $ds . "traiwi" . $ds . "traiwi" . $ds . "src" . $ds . "Core" . $ds . "Entities" . $ds,
-);
-$isDevMode = true;
-
-$clientConfig = new Config(".." . $ds . "config");
-
-// the connection configuration
-$dbParams = array(
-	"driver"   => "pdo_mysql",
-	"user"     => $clientConfig->get("mysql", "user"),
-	"password" => $clientConfig->get("mysql", "password"),
-	"dbname"   => $clientConfig->get("mysql", "dbname"),
-);
-
-$config = Setup::createAnnotationMetadataConfiguration($paths, $isDevMode);
-		
-$evm  = new EventManager();
-$rtel = new ResolveTargetEntityListener();
-
-$rtel->addResolveTargetEntity(
-	"Traiwi\Core\Entities\BaseUserInterface", 
-	$clientConfig->get("system", "user_resolve_target") . "\Core\Entities\MysUser", 
-	array()
-);
-$evm->addEventListener(Events::loadClassMetadata, $rtel);
-		
-$entityManager = EntityManager::create($dbParams, $config, $evm);
-
-?>';
-		
-$composer = '{
-    "require": {
-		"traiwi/traiwi": "dev-develop",
-		"scipper/formfile": "dev-master"
-    },
-    "repositories": [
-		{"type": "composer", "url": "http://toran.myscipper.de/repo/private/"}
-    ]
-}
-		
-';
-
-$bundle = '<?php
-
-namespace ' . $this->namespace . ';
-
-use Traiwi\Core\Interfaces\TraiwiBundleInterface;
-
-class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
-	
-	/**
-	 *
-	 * {@inheritDoc}
-	 * @see \Traiwi\Core\Interfaces\TraiwiBundleInterface::getPath()
-	 */
-	public function getPath() {
-		return dirname(__FILE__) . DIRECTORY_SEPARATOR;
-	}
-	
-	/**
-	 *
-	 * {@inheritDoc}
-	 * @see \Traiwi\Core\Interfaces\TraiwiBundleInterface::getTemplatePath()
-	 */
-	public function getTemplatePath() {
-		return $this->getPath() . ".." . DIRECTORY_SEPARATOR . "shell" . DIRECTORY_SEPARATOR . "Templates" . DIRECTORY_SEPARATOR;
-	}
-	
-	/**
-	 *
-	 * {@inheritDoc}
-	 * @see \Traiwi\Core\Interfaces\TraiwiBundleInterface::getModulePath()
-	 */
-	public function getModulePath() {
-		return $this->getPath() . "Modules" . DIRECTORY_SEPARATOR;
-	}
-	
-	/**
-	 *
-	 * {@inheritDoc}
-	 * @see \Traiwi\Core\Interfaces\TraiwiBundleInterface::getModuleNamespace()
-	 */
-	public function getModuleNamespace() {
-		return __NAMESPACE__ . "\\\\Modules\\\\";
-	}
-	
-}
-
-?>';
+		$this->targetDir = getcwd() . $this->ds;
+		$this->composer = $this->targetDir . "composer.phar";
+		$this->projectname = @$argv[1];
 		
 		$this->files = array(
-			"client" . $this->ds . "config" . $this->ds . "config.ini" => $config,
-			"client" . $this->ds . ".htaccess" => $htaccess,
-			"client" . $this->ds . "main.php" => $main,
-			"client" . $this->ds . "main_dev.php" => $mainDev,
-			"client" . $this->ds . "cli" . $this->ds . "cli-config.php" => $cliConfig,
-			"client" . $this->ds . "cli" . $this->ds . "bootstrap.php" => $bootstrap,
-			"composer.json" => $composer,
-			"src" . $this->ds . $this->namespace . "Bundle.php" => $bundle,
+			"client" . $this->ds . ".htaccess" => $this->fileContainer->getHtacces(),
+			"client" . $this->ds . "main.php" => $this->fileContainer->getMain(),
+			"client" . $this->ds . "main_dev.php" => $this->fileContainer->getMainDev(),
+			"client" . $this->ds . "cli" . $this->ds . "cli-config.php" => $this->fileContainer->getCliConfig(),
+			"client" . $this->ds . "cli" . $this->ds . "bootstrap.php" => $this->fileContainer->getBootstrap(),
 		);
 		
 		$this->folders = array(
@@ -483,6 +192,20 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 			"shell" . $this->ds . "Templates",
 		);
 		
+	}
+	
+	/**
+	 * 
+	 */
+	public function install() {
+		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("                   "); echo PHP_EOL;
+		$this->colorizer->cecho("TRAIWI Installation", Colorizer::FG_ORANGE); echo PHP_EOL;
+		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("                   "); echo PHP_EOL;
+		
+		$this->checkParameter();
+		
 		$this->checkPermission();
 		$this->createFolders();
 		$this->installComposer();
@@ -497,16 +220,17 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	/**
 	 * 
 	 */
-	public function checkPermission() {
+	protected function checkPermission() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Traiwi will be installed in: " . $this->targetDir, Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 		
-		if(in_array("-f", $this->argv) || in_array("--force", $this->argv)) {
+		$force = in_array("-f", $this->argv) || in_array("--force", $this->argv);
+		if($force) {
 			$this->rrmdir($this->targetDir);
 		}
 		
-		if(!@mkdir($this->targetDir, 0750, true)){
-			$msg = "You have no permission to install TRAIWI in " . $this->targetDir . PHP_EOL;
+		if(count(scandir($this->targetDir)) > 2 && !$force) {
+			$msg = "This directory is not empty." . PHP_EOL;
 			$msg .= "Append -f or --force to override the current installtion";
 			$this->error($msg);
 		}
@@ -515,11 +239,11 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	/**
 	 * 
 	 */
-	public function createFolders() {
+	protected function createFolders() {
 		$process = 0;
 
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
-		$this->colorizer->cecho("Creating folder structure for " . $this->core . ": ", Colorizer::FG_LIGHT_GRAY); 
+		$this->colorizer->cecho("Creating folder structure for " . $this->projectname . ": ", Colorizer::FG_LIGHT_GRAY); 
 		
 		if($this->verbose) {
 			echo PHP_EOL;
@@ -550,7 +274,7 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	/**
 	 * 
 	 */
-	public function installComposer() {
+	protected function installComposer() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);;
 		$this->colorizer->cecho("Installing composer: ", Colorizer::FG_LIGHT_GRAY);
 		
@@ -583,7 +307,7 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 		}
 
 		$this->execCommand(
-			"php " . $this->composer . " -- --install-dir=" . $this->core, 
+			"php " . $this->composer . " -- --install-dir=" . $this->targetDir, 
 			"Installing composer: "
 		);
 		
@@ -599,7 +323,7 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	/**
 	 * 
 	 */
-	public function createComposerJson() {
+	protected function createComposerJson() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Creating composer json: ", Colorizer::FG_LIGHT_GRAY);
 		
@@ -609,11 +333,10 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	
 		$filename = "composer.json";
 		$path = $this->targetDir . $filename;
-		$content = $this->files[$filename];
+		$content = $this->fileContainer->getComposer($this->projectname);
 		if(!file_put_contents($path, $content)) {
 			$this->error($path . " could not be created");
 		}
-		unset($this->files[$path]);
 		
 		if($this->verbose) {
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
@@ -630,7 +353,7 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	/**
 	 * 
 	 */
-	public function enterCredentials() {
+	protected function enterCredentials() {
 		$handle = fopen("php://stdin","r");
 		
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
@@ -646,7 +369,7 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 		echo PHP_EOL;
 		
 		$composerHome = $this->execCommand(
-			"php " . $this->composer . " --working-dir=" . $this->core . " config home", 
+			"php " . $this->composer . " --working-dir=" . $this->targetDir . " config home", 
 			"Storing credentials"
 		);
 		
@@ -683,7 +406,7 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	/**
 	 * 
 	 */
-	public function createFiles() {
+	protected function createFiles() {
 		$process = 0;
 
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
@@ -692,33 +415,24 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 		if($this->verbose) {
 			echo PHP_EOL;
 		}
+		
+		$path = $this->targetDir . "client" . $this->ds . "config" . $this->ds . "config.ini";
+		$content = $this->fileContainer->getConfig($this->vendor, $this->package, $this->mysqlUser, $this->mysqlPass);
+		$this->createFile($path, $content);
 	
 		$k = 0;
 		foreach($this->files as $filename => $content) {
 			$path = $this->targetDir . $filename;
-			if(!file_exists($path)) {
-				if(is_callable($content)) {
-					$content = $content($this->argv, $this->mysqlUser, $this->mysqlPass, $this->namespace);
-				}
-				
-				if(!file_put_contents($path, $content)) {
-					$this->error($path . " could not be created");
-				}
-				
-				if($this->verbose) {
-					$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
-					$this->colorizer->cecho("chmod(" . $path . ", 0644)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
-				}
-				
-				if(!chmod($path, 0644)) {
-					$this->error("Permission for " . $path . " could not be set");
-				}
-			}
-				
+			$this->createFile($path, $content);
+			
 			$process = round((100 / count($this->files)) * ($k + 1));
 
 			$k++;
 		}
+
+		$path = $this->targetDir . "src" . $this->ds . ucfirst(strtolower($this->package)) . "Bundle.php";
+		$content = $this->fileContainer->getBundle(ucfirst(strtolower($this->vendor)), ucfirst(strtolower($this->package)));
+		$this->createFile($path, $content);
 		
 		if($this->verbose) {
 			echo PHP_EOL;
@@ -731,13 +445,35 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	
 	/**
 	 * 
+	 * @param string $path
+	 * @param string $content
 	 */
-	public function loadVendors() {
+	private function createFile($path, $content) {
+		if(!file_exists($path)) {
+			if(!file_put_contents($path, $content)) {
+				$this->error($path . " could not be created");
+			}
+		
+			if($this->verbose) {
+				$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+				$this->colorizer->cecho("chmod(" . $path . ", 0644)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+			}
+		
+			if(!chmod($path, 0644)) {
+				$this->error("Permission for " . $path . " could not be set");
+			}
+		}
+	}
+	
+	/**
+	 * 
+	 */
+	protected function loadVendors() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Loading vendors: ", Colorizer::FG_LIGHT_GRAY); 
 		
 		$this->execCommand(
-			"php " . $this->composer . " --working-dir=" . $this->core . ($this->isWindows ? " install" : " update --prefer-dist"), 
+			"php " . $this->composer . " --working-dir=" . $this->targetDir . ($this->isWindows ? " install" : " update --prefer-dist"), 
 			"Loading vendors: "
 		);
 		
@@ -753,7 +489,7 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	/**
 	 * 
 	 */
-	public function linkBinaries() {
+	protected function linkBinaries() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Generate Symlinks: ", Colorizer::FG_LIGHT_GRAY);
 
@@ -765,20 +501,11 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
 			$this->colorizer->cecho("symlink(vendor" . $this->ds . "bin, bin)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 		}
-		if(!symlink("vendor" . $this->ds . "bin", $this->core . "bin")) {
+		if(!symlink("vendor" . $this->ds . "bin", "bin")) {
 			$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
 			$this->error("binaries could not be linked");
 		}
 
-		if($this->verbose) {
-			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
-			$this->colorizer->cecho("symlink(.." . $this->ds . "shell, client" . $this->ds . "own)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
-		}
-		if(!symlink(".." . $this->ds . "shell", $this->core . "client" . $this->ds . "own")) {
-			$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
-			$this->error("own shell could not be linked to client");
-		}
-		
 		if($this->verbose) {
 			echo PHP_EOL;
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
@@ -791,7 +518,7 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	/**
 	 * 
 	 */
-	public function finish() {
+	protected function finish() {
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 		$this->colorizer->cecho("Congratulation!", Colorizer::FG_GREEN); echo PHP_EOL;
@@ -805,29 +532,24 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 
-		$this->colorizer->cecho("To let your base installtion of TRAIWI work, there are 5 simple steps to do:", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; echo PHP_EOL;
+		$this->colorizer->cecho("To let your base installtion of TRAIWI work, there are 4 simple steps to do:", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; echo PHP_EOL;
 		
-		$step1 = "cd " . $this->targetDir;
+		$step2 = "mysql -u " . $this->mysqlUser . " -p" . $this->mysqlPass . " -e 'CREATE DATABASE " . $this->package . " CHARACTER SET utf8 COLLATE utf8_general_ci';";
 		$this->colorizer->cecho("1. ", Colorizer::FG_LIGHT_BLUE);
-		$this->colorizer->cecho("Change directory to the installion folder: ", Colorizer::FG_LIGHT_GRAY);
-		$this->colorizer->cecho($step1 , Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
-		
-		$step2 = "mysql -u " . $this->mysqlUser . " -p" . $this->mysqlPass . " -e 'CREATE DATABASE " . @$this->argv[1] . " CHARACTER SET utf8 COLLATE utf8_general_ci';";
-		$this->colorizer->cecho("2. ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Create a database with: ", Colorizer::FG_LIGHT_GRAY);
 		$this->colorizer->cecho($step2, Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 		
 		$step3 = "php bin/traiwicli orm:schema-tool:update --force";
-		$this->colorizer->cecho("3. ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("2. ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Create the database scheme with the doctrine wrapper 'traiwicli': ", Colorizer::FG_LIGHT_GRAY);
 		$this->colorizer->cecho($step3, Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 		
 		$step4 = "php -S localhost:8080 client/main_dev.php";
-		$this->colorizer->cecho("4. ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("3. ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Run the php server to start development: ", Colorizer::FG_LIGHT_GRAY);
 		$this->colorizer->cecho($step4, Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 		
-		$this->colorizer->cecho("5. ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("4. ", Colorizer::FG_LIGHT_BLUE);
 		$this->colorizer->cecho("Log in with the following data: ", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; 
 		$this->colorizer->cecho("    - email: ", Colorizer::FG_LIGHT_GRAY); 
 		$this->colorizer->cecho("user@traiwi.de", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL; 
@@ -836,31 +558,40 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 		
 		$this->colorizer->cecho("OR: all in one: ", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 
-		$this->colorizer->cecho($step1 . " ;\\", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 		$this->colorizer->cecho($step2 . " \\", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 		$this->colorizer->cecho($step3 . " ;\\", Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 		$this->colorizer->cecho($step4, Colorizer::FG_LIGHT_BLUE); echo PHP_EOL;
 	}
 	
-	public function rrmdir($dir) {
+	/**
+	 * 
+	 * @param string $dir
+	 */
+	protected function rrmdir($dir) {
 		if(!is_dir($dir)) {
 			return;			
 		}
 		
 		$objects = scandir($dir);
 		foreach($objects as $object) {
-			if($object == "." || $object == "..") {
+			if($object == "." || 
+					$object == "..") {
 				continue;	
 			}
 			
-			if(filetype($dir."/".$object) == "dir") {
-				$this->rrmdir($dir."/".$object); 
+			if(filetype($dir . $this->ds . $object) == "dir") {
+				$this->rrmdir($dir . $this->ds . $object); 
 			} else {
-				unlink($dir."/".$object);
+				unlink($dir . $this->ds . $object);
 			}
 		}
 		
 		reset($objects);
+		
+		if($dir == $this->targetDir) {
+			return;
+		}
+		
 		rmdir($dir);
 	}
 	
@@ -868,7 +599,7 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	 * 
 	 * @param string $error
 	 */
-	public function error($error, $exit = true) {
+	protected function error($error, $exit = true) {
 		$this->colorizer->cecho($error, Colorizer::FG_RED); echo PHP_EOL; echo PHP_EOL;
 		
 		if($exit) {
@@ -882,7 +613,7 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	 * @param string $action
 	 * @return string
 	 */
-	public function execCommand($cmd, $action) {
+	protected function execCommand($cmd, $action) {
 		$result = array();
 		$status = NULL;
 		
@@ -917,22 +648,27 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	/**
 	 * 
 	 */
-	public function checkParameter() {
+	protected function checkParameter() {
 		if(in_array("-h", $this->argv) || in_array("--help", $this->argv)) {
 			$this->displayHelp();
 		}
 		
 		if(!isset($this->argv[1]) || substr($this->argv[1], 0, 1) == "-") {
-			$this->error("No project name given", false);
+			$this->error("No project name given. vendor/package", false);
 			
 			$this->displayHelp();
 		}
 		
-		if(preg_match("/[^A-Za-z0-9]/", $this->argv[1])) {
-			$this->error("Invalid project name. Only uppercase and lowercase letters and numbers are allowed.", false);
+		if(!preg_match("/([^A-Za-z0-9]?)(\/)([^A-Za-z0-9]?)/", $this->argv[1])) {
+			$this->error("Invalid project name. vendor/package.", false);
 			
 			$this->displayHelp();
 		}
+		
+		$parts = explode("/", $this->argv[1]);
+		$this->vendor = $parts[0];
+		$this->package = $parts[1];
+		$this->namespace = ucfirst(strtolower($this->vendor)) . "\\" . ucfirst(strtolower($this->package));
 		
 		if(in_array("-v", $this->argv) || in_array("--verbose", $this->argv)) {
 			$this->verbose = true;
@@ -942,7 +678,7 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 	/**
 	 * 
 	 */
-	public function displayHelp() {
+	protected function displayHelp() {
 		$this->colorizer->cecho("Usage:", Colorizer::FG_ORANGE); echo PHP_EOL;
 		$this->colorizer->cecho("  project [options]", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; echo PHP_EOL;
 		
@@ -955,6 +691,369 @@ class ' . $this->namespace . 'Bundle implements TraiwiBundleInterface {
 		exit;
 	}
 
+}
+
+
+/**
+ * 
+ * @author Steffen Kowalski <sk@traiwi.de>
+ *
+ * @since 21.12.2015
+ * @package TRAIWICLI
+ *
+ */
+class TraiwiFileContainer {
+	
+	/**
+	 * 
+	 * @param string $package
+	 * @param string $mysqlUser
+	 * @param string $mysqlPass
+	 * @param string $namespace
+	 * @return string
+	 */
+	public function getConfig($vendor, $package, $mysqlUser, $mysqlPass) {
+			return '[mysql]
+host="127.0.0.1"
+dbname="' . $package . '"
+user="' . $mysqlUser . '"
+password="' . $mysqlPass . '"
+		
+[system]
+default_lang="de"
+default_title="TRAIWI"
+logging="on"
+password_salt="123"
+password_reset_salt="456"
+lowest_role="GUEST"
+is_dev_mode="true"
+custom_repository_factory=""
+user_resolve_target="Traiwi"
+		
+[bundles]
+traiwi="Traiwi\Traiwicore\TraiwiBundle"
+' . strtolower($vendor . $package) . '="' . ucfirst(strtolower($vendor)) . '\\' . ucfirst(strtolower($package)) . '\\' . ucfirst(strtolower($package)) . 'Bundle"
+';
+	}
+	
+	/**
+	 * 
+	 * @return string
+	 */
+	public function getHtacces() {
+		return 'RewriteEngine On
+RewriteBase /
+		
+RewriteRule ^uploads/ - [L]
+		
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.css$ vendor/$1/$2/shell/CSS/$3.css [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.js$ vendor/$1/$2/shell/JS/$3.js [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.gif$ vendor/$1/$2/shell/Images/$3.gif [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.png$ vendor/$1/$2/shell/Images/$3.png [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.jpg$ vendor/$1/$2/shelll/Images/$3.jpg [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.eot$ vendor/$1/$2/shell/Fonts/$3.eot [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.eot?#iefix$ vendor/$1/$2/shell/Fonts/$3.eot [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.woff$ vendor/$1/$2/shell/Fonts/$3.woff [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.woff2$ vendor/$1/$2/shell/Fonts/$3.woff2 [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.ttf$ vendor/$1/$2/shell/Fonts/$3.ttf [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.svg#icomoon$ vendor/$1/$2/shell/Fonts/$2.svg [L]
+		
+RewriteRule ^(.*)\.css$ own/shell/CSS/$3.css [L]
+RewriteRule ^(.*)\.js$ own/shell/JS/$3.js [L]
+RewriteRule ^(.*)\.gif$ own/shell/Images/$3.gif [L]
+RewriteRule ^(.*)\.png$ own/shell/Images/$3.png [L]
+RewriteRule ^(.*)\.jpg$ own/shelll/Images/$3.jpg [L]
+RewriteRule ^(.*)\.eot$ own/shell/Fonts/$3.eot [L]
+RewriteRule ^(.*)\.eot?#iefix$ own/shell/Fonts/$3.eot [L]
+RewriteRule ^(.*)\.woff$ own/shell/Fonts/$3.woff [L]
+RewriteRule ^(.*)\.woff2$ own/shell/Fonts/$3.woff2 [L]
+RewriteRule ^(.*)\.ttf$ own/shell/Fonts/$3.ttf [L]
+RewriteRule ^(.*)\.svg#icomoon$ own/shell/Fonts/$2.svg [L]
+		
+RewriteRule ^uploads/(.*)$ uploads/$1 [L]
+RewriteRule ^(.*)\.ico$ - [L]
+RewriteRule ^(.*)$ main.php?url=$1 [QSA,L]
+';
+	}
+	
+	/**
+	 * 
+	 * @return string
+	 */
+	public function getMain() {
+		return '<?php
+		
+ob_start();
+		
+$ds = DIRECTORY_SEPARATOR;
+		
+ini_set("expose_php","Off");
+ini_set("log_errors",TRUE);
+ini_set("error_log",dirname(__FILE__).$ds."logs".$ds."custom_error_log.txt");
+error_reporting(E_ALL ^ E_STRICT);
+mb_internal_encoding("UTF-8");
+mb_regex_encoding("UTF-8");
+		
+date_default_timezone_set("Europe/Berlin");
+		
+define("APP_ROOT", dirname(__FILE__).$ds."..".$ds);
+define("SRC_ROOT", dirname(__FILE__).$ds."..".$ds."src".$ds);
+define("CACHE_ROOT", dirname(__FILE__).$ds."cache".$ds);
+define("VENDOR_ROOT", dirname(__FILE__).$ds."..".$ds."vendor".$ds);
+define("USERDATA_ROOT", dirname(__FILE__).$ds."uploads".$ds);
+define("TRAIWI_CORE", VENDOR_ROOT."traiwi".$ds."traiwi".$ds."src".$ds."Core".$ds);
+define("CLIENT_DIR", basename(dirname(__FILE__)));
+		
+include_once TRAIWI_CORE."Classloader.php";
+		
+$loader = new Traiwi\Traiwicore\Core\Classloader(SRC_ROOT);
+$loader->register();
+		
+if(file_exists(VENDOR_ROOT."autoload.php")) {
+	require_once VENDOR_ROOT."autoload.php";
+}
+		
+use Traiwi\Traiwicore\Core\Server;
+use Traiwi\Traiwicore\Core\Services\Config;
+		
+$client_config = new Config(dirname(__FILE__).$ds."config");
+$client_config->defineConstants();
+$client_config->initBundles();
+		
+$server = new Server($client_config);
+$server->run();
+		
+?>
+';
+	}
+	
+	/**
+	 * 
+	 * @return string
+	 */
+	public function getMainDev() {
+		return '<?php
+		
+ob_start();
+		
+$ds = DIRECTORY_SEPARATOR;
+		
+ini_set("expose_php","Off");
+ini_set("log_errors",TRUE);
+ini_set("error_log",dirname(__FILE__).$ds."logs".$ds."custom_error_log.txt");
+error_reporting(E_ALL ^ E_STRICT);
+mb_internal_encoding("UTF-8");
+mb_regex_encoding("UTF-8");
+		
+date_default_timezone_set("Europe/Berlin");
+		
+define("APP_ROOT", dirname(__FILE__).$ds."..".$ds);
+define("SRC_ROOT", dirname(__FILE__).$ds."..".$ds."src".$ds);
+define("CACHE_ROOT", dirname(__FILE__).$ds."cache".$ds);
+define("VENDOR_ROOT", dirname(__FILE__).$ds."..".$ds."vendor".$ds);
+define("USERDATA_ROOT", dirname(__FILE__).$ds."uploads".$ds);
+define("TRAIWI_CORE", VENDOR_ROOT."traiwi".$ds."traiwi".$ds."src".$ds."Core".$ds);
+define("CLIENT_DIR", basename(dirname(__FILE__)));
+		
+		
+$extensions = array(
+	"css" => "text/css",
+	"js" => "text/javascript",
+	"png" => "image/png",
+	"jpg" => "image/jpeg",
+	"jpeg" => "image/jpeg",
+	"gif" => "image/gif",
+	"eot" => "application/vnd.ms-fontobject",
+	"woff" => "application/font-woff",
+	"woff2" => "application/font-woff",
+	"ttf" => "application/font-ttf",
+	"svg" => "image/svg+xml",
+);
+		
+$folders = array(
+	"css" => "CSS",
+	"js" => "JS",
+	"png" => "Images",
+	"jpg" => "Images",
+	"jpeg" => "Images",
+	"gif" => "Images",
+	"eot" => "Fonts",
+	"woff" => "Fonts",
+	"woff2" => "Fonts",
+	"ttf" => "Fonts",
+	"svg" => "Fonts",
+);
+		
+$path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
+$ext = pathinfo($path, PATHINFO_EXTENSION);
+if(array_key_exists($ext, $extensions)) {
+	$file = VENDOR_ROOT . pathinfo($path, PATHINFO_DIRNAME) . $ds . "shell" . $ds . $folders[$ext] . $ds . pathinfo($path, PATHINFO_BASENAME);
+	if(is_readable($file)) {
+		header("Content-Type: " . $extensions[$ext]);
+		readfile($file);
+	}
+		
+    return;
+}
+		
+		
+include_once TRAIWI_CORE."Classloader.php";
+		
+$loader = new Traiwi\Traiwicore\Core\Classloader(SRC_ROOT);
+$loader->register();
+		
+if(file_exists(VENDOR_ROOT."autoload.php")) {
+	require_once VENDOR_ROOT."autoload.php";
+}
+		
+use Traiwi\Traiwicore\Core\Server;
+use Traiwi\Traiwicore\Core\Services\Config;
+		
+$client_config = new Config(dirname(__FILE__).$ds."config");
+$client_config->defineConstants();
+$client_config->initBundles();
+		
+$server = new Server($client_config);
+$server->run();
+		
+?>
+';
+	}
+	
+	/**
+	 * 
+	 * @return string
+	 */
+	public function getCliConfig() {
+		return '<?php
+		
+use Doctrine\ORM\Tools\Console\ConsoleRunner;
+		
+require_once "bootstrap.php";
+		
+return ConsoleRunner::createHelperSet($entityManager);
+?>';
+	}
+	
+	/**
+	 * 
+	 * @return string
+	 */
+	public function getBootstrap() {
+		return  '<?php
+		
+$ds = DIRECTORY_SEPARATOR;
+
+require_once ".." . $ds . ".." . $ds . "vendor" . $ds . "autoload.php";
+
+use Doctrine\ORM\Tools\Setup;
+use Doctrine\ORM\EntityManager;
+use Doctrine\Common\EventManager;
+use Doctrine\ORM\Tools\ResolveTargetEntityListener;
+use Doctrine\ORM\Events;
+use Traiwi\Core\Services\Config;
+
+$paths = array(
+	getcwd() . $ds . ".." . $ds . ".." . $ds . "vendor" . $ds . "traiwi" . $ds . "traiwi" . $ds . "src" . $ds . "Core" . $ds . "Entities" . $ds,
+);
+$isDevMode = true;
+
+$clientConfig = new Config(".." . $ds . "config");
+
+// the connection configuration
+$dbParams = array(
+	"driver"   => "pdo_mysql",
+	"user"     => $clientConfig->get("mysql", "user"),
+	"password" => $clientConfig->get("mysql", "password"),
+	"dbname"   => $clientConfig->get("mysql", "dbname"),
+);
+
+$config = Setup::createAnnotationMetadataConfiguration($paths, $isDevMode);
+		
+$evm  = new EventManager();
+$rtel = new ResolveTargetEntityListener();
+
+$rtel->addResolveTargetEntity(
+	"Traiwi\Traiwicore\Core\Entities\BaseUserInterface", 
+	$clientConfig->get("system", "user_resolve_target") . "\Core\Entities\MysUser", 
+	array()
+);
+$evm->addEventListener(Events::loadClassMetadata, $rtel);
+		
+$entityManager = EntityManager::create($dbParams, $config, $evm);
+
+?>';
+	}
+	
+	/**
+	 * 
+	 * @return string
+	 */
+	public function getComposer($projectname) {
+		return '{
+	"name": "' . $projectname . '",
+    "require": {
+		"traiwi/traiwicore": "dev-develop",
+		"scipper/formfile": "dev-master"
+    },
+    "repositories": [
+		{"type": "composer", "url": "http://toran.myscipper.de/repo/private/"}
+    ]
+}
+		
+';
+	}
+	
+	public function getBundle($vendor, $package) {
+		return '<?php
+
+namespace ' . $vendor . "\\" . $package . ';
+
+use Traiwi\Traiwicore\Core\Interfaces\TraiwiBundleInterface;
+
+class ' . $package . 'Bundle implements TraiwiBundleInterface {
+	
+	/**
+	 *
+	 * {@inheritDoc}
+	 * @see \Traiwi\Traiwicore\Core\Interfaces\TraiwiBundleInterface::getPath()
+	 */
+	public function getPath() {
+		return dirname(__FILE__) . DIRECTORY_SEPARATOR;
+	}
+	
+	/**
+	 *
+	 * {@inheritDoc}
+	 * @see \Traiwi\Traiwicore\Core\Interfaces\TraiwiBundleInterface::getTemplatePath()
+	 */
+	public function getTemplatePath() {
+		return $this->getPath() . ".." . DIRECTORY_SEPARATOR . "shell" . DIRECTORY_SEPARATOR . "Templates" . DIRECTORY_SEPARATOR;
+	}
+	
+	/**
+	 *
+	 * {@inheritDoc}
+	 * @see \Traiwi\Traiwicore\Core\Interfaces\TraiwiBundleInterface::getModulePath()
+	 */
+	public function getModulePath() {
+		return $this->getPath() . "Modules" . DIRECTORY_SEPARATOR;
+	}
+	
+	/**
+	 *
+	 * {@inheritDoc}
+	 * @see \Traiwi\Traiwicore\Core\Interfaces\TraiwiBundleInterface::getModuleNamespace()
+	 */
+	public function getModuleNamespace() {
+		return __NAMESPACE__ . "\\\\Modules\\\\";
+	}
+	
+}
+
+?>';
+	}
+	
 }
 
 
