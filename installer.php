@@ -728,7 +728,7 @@ password_reset_salt="456"
 lowest_role="GUEST"
 is_dev_mode="true"
 custom_repository_factory=""
-user_resolve_target="Traiwi"
+user_resolve_target="Traiwi\Traiwicore"
 		
 [bundles]
 traiwi="Traiwi\Traiwicore\TraiwiBundle"
@@ -801,7 +801,7 @@ define("SRC_ROOT", dirname(__FILE__).$ds."..".$ds."src".$ds);
 define("CACHE_ROOT", dirname(__FILE__).$ds."cache".$ds);
 define("VENDOR_ROOT", dirname(__FILE__).$ds."..".$ds."vendor".$ds);
 define("USERDATA_ROOT", dirname(__FILE__).$ds."uploads".$ds);
-define("TRAIWI_CORE", VENDOR_ROOT."traiwi".$ds."traiwi".$ds."src".$ds."Core".$ds);
+define("TRAIWI_CORE", VENDOR_ROOT."traiwi".$ds."traiwicore".$ds."src".$ds."Core".$ds);
 define("CLIENT_DIR", basename(dirname(__FILE__)));
 		
 include_once TRAIWI_CORE."Classloader.php";
@@ -852,7 +852,7 @@ define("SRC_ROOT", dirname(__FILE__).$ds."..".$ds."src".$ds);
 define("CACHE_ROOT", dirname(__FILE__).$ds."cache".$ds);
 define("VENDOR_ROOT", dirname(__FILE__).$ds."..".$ds."vendor".$ds);
 define("USERDATA_ROOT", dirname(__FILE__).$ds."uploads".$ds);
-define("TRAIWI_CORE", VENDOR_ROOT."traiwi".$ds."traiwi".$ds."src".$ds."Core".$ds);
+define("TRAIWI_CORE", VENDOR_ROOT."traiwi".$ds."traiwicore".$ds."src".$ds."Core".$ds);
 define("CLIENT_DIR", basename(dirname(__FILE__)));
 		
 		
@@ -954,7 +954,7 @@ use Doctrine\ORM\Events;
 use Traiwi\Traiwicore\Core\Services\Config;
 
 $paths = array(
-	getcwd() . $ds . ".." . $ds . ".." . $ds . "vendor" . $ds . "traiwi" . $ds . "traiwi" . $ds . "src" . $ds . "Core" . $ds . "Entities" . $ds,
+	getcwd() . $ds . ".." . $ds . ".." . $ds . "vendor" . $ds . "traiwi" . $ds . "traiwicore" . $ds . "src" . $ds . "Core" . $ds . "Entities" . $ds,
 );
 $isDevMode = true;
 
