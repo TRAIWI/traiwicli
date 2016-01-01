@@ -8,7 +8,7 @@ $traiwiCli = new TraiwiInstallation(
 	new TraiwiFileContainer(),
 	$cliArgs
 );
-$traiwiCli->install();
+$traiwiCli->start();
 
 /**
  * 
@@ -140,6 +140,18 @@ class TraiwiInstallation {
 	 */	
 	protected $mysqlPass;
 	
+	/**
+	 * 
+	 * @var string
+	 */
+	protected $command;
+	
+	/**
+	 * 
+	 * @var array
+	 */
+	protected $availableCommands;
+	
 	
 	/**
 	 * 
@@ -147,6 +159,11 @@ class TraiwiInstallation {
 	public function __construct(Colorizer $colorizer, TraiwiFileContainer $container, array $argv) {
 		$this->isWindows = strtoupper(substr(PHP_OS, 0, 3)) === "WIN";
 		$this->ds = DIRECTORY_SEPARATOR;
+		$this->command = "";
+		$this->availableCommands = array(
+			"new" => "create a new empty project.",
+			"clone" => "clone an existing project."
+		);
 		
 		$this->colorizer = $colorizer;
 		$this->colorizer->setIsWindows($this->isWindows);
@@ -167,7 +184,7 @@ class TraiwiInstallation {
 		$this->projectname = @$argv[1];
 		
 		$this->files = array(
-			"client" . $this->ds . ".htaccess" => $this->fileContainer->getHtacces(),
+			".htaccess" => $this->fileContainer->getHtacces(),
 			"client" . $this->ds . "main.php" => $this->fileContainer->getMain(),
 			"client" . $this->ds . "main_dev.php" => $this->fileContainer->getMainDev(),
 			"client" . $this->ds . "cli" . $this->ds . "cli-config.php" => $this->fileContainer->getCliConfig(),
@@ -197,7 +214,7 @@ class TraiwiInstallation {
 	/**
 	 * 
 	 */
-	public function install() {
+	public function start() {
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 		$this->colorizer->cecho("TRAIWI Installation", Colorizer::FG_ORANGE); echo PHP_EOL;
@@ -206,6 +223,14 @@ class TraiwiInstallation {
 		
 		$this->checkParameter();
 		
+		$command = $this->command;
+		$this->$command();
+	}
+	
+	/**
+	 * 
+	 */
+	protected function commandNew() {
 		$this->checkPermission();
 		$this->createFolders();
 		$this->installComposer();
@@ -222,7 +247,7 @@ class TraiwiInstallation {
 	 */
 	protected function checkPermission() {
 		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
-		$this->colorizer->cecho("Traiwi will be installed in: " . $this->targetDir, Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("Project will be installed in: " . $this->targetDir, Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 		
 		$force = in_array("-f", $this->argv) || in_array("--force", $this->argv);
 		if($force) {
@@ -265,7 +290,7 @@ class TraiwiInstallation {
 		if($this->verbose) {
 			echo PHP_EOL;
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
-			$this->colorizer->cecho("Created folder structure for " . $this->core . ": ", Colorizer::FG_LIGHT_GRAY);
+			$this->colorizer->cecho("Created folder structure for " . $this->projectname . ": ", Colorizer::FG_LIGHT_GRAY);
 		}
 		
 		$this->colorizer->cecho($this->symbolOk, Colorizer::FG_GREEN); echo PHP_EOL;
@@ -345,6 +370,12 @@ class TraiwiInstallation {
 		
 		if(!chmod($path, 0644)) {
 			$this->error("Permission for " . $path . " could not be set");
+		}
+
+		if($this->verbose) {
+			echo PHP_EOL;
+			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+			$this->colorizer->cecho("Created composer json: ", Colorizer::FG_LIGHT_GRAY);
 		}
 		
 		$this->colorizer->cecho($this->symbolOk, Colorizer::FG_GREEN); echo PHP_EOL;
@@ -522,9 +553,10 @@ class TraiwiInstallation {
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 		$this->colorizer->cecho("Congratulation!", Colorizer::FG_GREEN); echo PHP_EOL;
-		$this->colorizer->cecho("TRAIWI was successfully installed to: " . $this->targetDir, Colorizer::FG_GREEN); echo PHP_EOL;echo PHP_EOL;
+		$this->colorizer->cecho("Your project was successfully installed to: " . $this->targetDir, Colorizer::FG_GREEN); echo PHP_EOL;echo PHP_EOL;
 		$this->colorizer->cecho("Available packages, you can install with 'php " . $this->composer . " require vendor/package', are: ", Colorizer::FG_GREEN); echo PHP_EOL;
-		$this->colorizer->cecho(" - traiwi/traiwi: The Application Core, already installed", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho(" - traiwi/traiwicore: The Application Core, already installed", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho(" - scipper/haushalt: Haushaltsbuch", Colorizer::FG_GREEN); echo PHP_EOL;
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 
@@ -532,7 +564,7 @@ class TraiwiInstallation {
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 
-		$this->colorizer->cecho("To let your base installtion of TRAIWI work, there are 4 simple steps to do:", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; echo PHP_EOL;
+		$this->colorizer->cecho("To let your installation work, there are 4 simple steps to do:", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; echo PHP_EOL;
 		
 		$step2 = "mysql -u " . $this->mysqlUser . " -p" . $this->mysqlPass . " -e 'CREATE DATABASE " . $this->package . " CHARACTER SET utf8 COLLATE utf8_general_ci';";
 		$this->colorizer->cecho("1. ", Colorizer::FG_LIGHT_BLUE);
@@ -598,6 +630,7 @@ class TraiwiInstallation {
 	/**
 	 * 
 	 * @param string $error
+	 * @param boolean $exit
 	 */
 	protected function error($error, $exit = true) {
 		$this->colorizer->cecho($error, Colorizer::FG_RED); echo PHP_EOL; echo PHP_EOL;
@@ -619,15 +652,17 @@ class TraiwiInstallation {
 		
 		if($this->verbose) {
 			if($this->isWindows) {
-				$cmd .= " 1> " . getcwd() . $this->ds . "traiwi_install.log 2>&1";
+				$cmd .= " 1> " . getcwd() . $this->ds . "install.log 2>&1";
 			} else {
-				$cmd .= " 2>&1 | tee " . getcwd() . $this->ds . "traiwi_install.log";
+				$cmd .= " 2>&1 | tee " . getcwd() . $this->ds . "install.log";
 			}
+			
+			$this->colorizer->cecho("exec(" . $cmd . ")", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 		} else {
 			if($this->isWindows) {
-				$cmd .= " 2> " . getcwd() . $this->ds . "traiwi_install.log";
+				$cmd .= " 2> " . getcwd() . $this->ds . "install.log";
 			} else {
-				$cmd .= " 2> " . getcwd() . $this->ds . "traiwi_install.log";
+				$cmd .= " 2> " . getcwd() . $this->ds . "install.log";
 			}
 		}
 		
@@ -635,7 +670,7 @@ class TraiwiInstallation {
 		
 		if($status > 0) {
 			$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
-			$this->error("See traiwi_install.log for more details. ");
+			$this->error("See install.log for more details. ");
 		}
 		
 		if(isset($result[0])) {
@@ -654,18 +689,32 @@ class TraiwiInstallation {
 		}
 		
 		if(!isset($this->argv[1]) || substr($this->argv[1], 0, 1) == "-") {
+			$this->error("No command given.", false);
+			
+			$this->displayHelp();
+		}
+		
+		if(!array_key_exists($this->argv[1], $this->availableCommands)) {
+			$this->error("Invalid command.", false);
+				
+			$this->displayHelp();
+		}
+		
+		$this->command = "command" . ucfirst(strtolower($this->argv[1]));
+		
+		if(!isset($this->argv[2]) || substr($this->argv[2], 0, 1) == "-") {
 			$this->error("No project name given. vendor/package", false);
 			
 			$this->displayHelp();
 		}
 		
-		if(!preg_match("/([^A-Za-z0-9]?)(\/)([^A-Za-z0-9]?)/", $this->argv[1])) {
+		if(!preg_match("/([^A-Za-z0-9]?)(\/)([^A-Za-z0-9]?)/", $this->argv[2])) {
 			$this->error("Invalid project name. vendor/package.", false);
 			
 			$this->displayHelp();
 		}
 		
-		$parts = explode("/", $this->argv[1]);
+		$parts = explode("/", $this->argv[2]);
 		$this->vendor = $parts[0];
 		$this->package = $parts[1];
 		$this->namespace = ucfirst(strtolower($this->vendor)) . "\\" . ucfirst(strtolower($this->package));
@@ -680,7 +729,13 @@ class TraiwiInstallation {
 	 */
 	protected function displayHelp() {
 		$this->colorizer->cecho("Usage:", Colorizer::FG_ORANGE); echo PHP_EOL;
-		$this->colorizer->cecho("  project [options]", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; echo PHP_EOL;
+		$this->colorizer->cecho(" command vendor/project [options]", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; echo PHP_EOL;
+		
+		$this->colorizer->cecho("Commands:", Colorizer::FG_ORANGE); echo PHP_EOL;
+		foreach($this->availableCommands as $command => $description) {
+			$this->colorizer->cecho("  " . $command . "\t " . $description, Colorizer::FG_GREEN); echo PHP_EOL;
+		}
+		echo PHP_EOL;
 		
 		$this->colorizer->cecho("Options:", Colorizer::FG_ORANGE); echo PHP_EOL;
 		$this->colorizer->cecho("  -h, --help \t\t Display this help", Colorizer::FG_GREEN); echo PHP_EOL;
@@ -742,37 +797,37 @@ traiwi="Traiwi\Traiwicore\TraiwiBundle"
 	 */
 	public function getHtacces() {
 		return 'RewriteEngine On
+RewriteEngine On
 RewriteBase /
 		
-RewriteRule ^uploads/ - [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.css$ vendor/$1/$2/shell/CSS/$3.css [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.js$ vendor/$1/$2/shell/JS/$3.js [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.gif$ vendor/$1/$2/shell/Images/$3.gif [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.png$ vendor/$1/$2/shell/Images/$3.png [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.jpg$ vendor/$1/$2/shelll/Images/$3.jpg [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.eot$ vendor/$1/$2/shell/Fonts/$3.eot [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.eot?#iefix$ vendor/$1/$2/shell/Fonts/$3.eot [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.woff$ vendor/$1/$2/shell/Fonts/$3.woff [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.woff2$ vendor/$1/$2/shell/Fonts/$3.woff2 [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.ttf$ vendor/$1/$2/shell/Fonts/$3.ttf [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.svg#icomoon$ vendor/$1/$2/shell/Fonts/$3.svg [L]
+	
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.css$ shell/CSS/$3.css [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.js$ shell/JS/$3.js [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.gif$ shell/Images/$3.gif [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.png$ shell/Images/$3.png [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.jpg$ shelll/Images/$3.jpg [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.eot$ shell/Fonts/$3.eot [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.eot?#iefix$ shell/Fonts/$3.eot [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.woff$ shell/Fonts/$3.woff [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.woff2$ shell/Fonts/$3.woff2 [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.ttf$ shell/Fonts/$3.ttf [L]
+RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)\.svg#icomoon$ shell/Fonts/$2.svg [L]
 		
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.css$ vendor/$1/$2/shell/CSS/$3.css [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.js$ vendor/$1/$2/shell/JS/$3.js [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.gif$ vendor/$1/$2/shell/Images/$3.gif [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.png$ vendor/$1/$2/shell/Images/$3.png [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.jpg$ vendor/$1/$2/shelll/Images/$3.jpg [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.eot$ vendor/$1/$2/shell/Fonts/$3.eot [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.eot?#iefix$ vendor/$1/$2/shell/Fonts/$3.eot [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.woff$ vendor/$1/$2/shell/Fonts/$3.woff [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.woff2$ vendor/$1/$2/shell/Fonts/$3.woff2 [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.ttf$ vendor/$1/$2/shell/Fonts/$3.ttf [L]
-RewriteRule ^([a-zA-Z0-9_]*)/([a-zA-Z0-9_]*)/(.*)\.svg#icomoon$ vendor/$1/$2/shell/Fonts/$2.svg [L]
-		
-RewriteRule ^(.*)\.css$ own/shell/CSS/$3.css [L]
-RewriteRule ^(.*)\.js$ own/shell/JS/$3.js [L]
-RewriteRule ^(.*)\.gif$ own/shell/Images/$3.gif [L]
-RewriteRule ^(.*)\.png$ own/shell/Images/$3.png [L]
-RewriteRule ^(.*)\.jpg$ own/shelll/Images/$3.jpg [L]
-RewriteRule ^(.*)\.eot$ own/shell/Fonts/$3.eot [L]
-RewriteRule ^(.*)\.eot?#iefix$ own/shell/Fonts/$3.eot [L]
-RewriteRule ^(.*)\.woff$ own/shell/Fonts/$3.woff [L]
-RewriteRule ^(.*)\.woff2$ own/shell/Fonts/$3.woff2 [L]
-RewriteRule ^(.*)\.ttf$ own/shell/Fonts/$3.ttf [L]
-RewriteRule ^(.*)\.svg#icomoon$ own/shell/Fonts/$2.svg [L]
-		
-RewriteRule ^uploads/(.*)$ uploads/$1 [L]
-RewriteRule ^(.*)\.ico$ - [L]
-RewriteRule ^(.*)$ main.php?url=$1 [QSA,L]
+RewriteRule ^uploads/(.*)$ client/uploads/$1 [L]
+RewriteRule ^(.*)\.ico$ shell/Images/$1.ico [L]
+RewriteRule ^(.*)$ client/main.php?url=$1 [QSA,L]
+			
 ';
 	}
 	
@@ -849,6 +904,7 @@ date_default_timezone_set("Europe/Berlin");
 		
 define("APP_ROOT", dirname(__FILE__).$ds."..".$ds);
 define("SRC_ROOT", dirname(__FILE__).$ds."..".$ds."src".$ds);
+define("SHELL_ROOT", dirname(__FILE__).$ds."..".$ds."shell".$ds);
 define("CACHE_ROOT", dirname(__FILE__).$ds."cache".$ds);
 define("VENDOR_ROOT", dirname(__FILE__).$ds."..".$ds."vendor".$ds);
 define("USERDATA_ROOT", dirname(__FILE__).$ds."uploads".$ds);
@@ -887,13 +943,17 @@ $folders = array(
 $path = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
 $ext = pathinfo($path, PATHINFO_EXTENSION);
 if(array_key_exists($ext, $extensions)) {
-	$file = VENDOR_ROOT . pathinfo($path, PATHINFO_DIRNAME) . $ds . "shell" . $ds . $folders[$ext] . $ds . pathinfo($path, PATHINFO_BASENAME);
-	if(is_readable($file)) {
+	$vendorFile = VENDOR_ROOT . pathinfo($path, PATHINFO_DIRNAME) . $ds . "shell" . $ds . $folders[$ext] . $ds . pathinfo($path, PATHINFO_BASENAME);
+	$clientFile = SHELL_ROOT . $folders[$ext] . $ds . pathinfo($path, PATHINFO_BASENAME);
+	if(is_readable($vendorFile)) {
 		header("Content-Type: " . $extensions[$ext]);
-		readfile($file);
+		readfile($vendorFile);
+	} elseif(is_readable($clientFile)) {
+		header("Content-Type: " . $extensions[$ext]);
+		readfile($clientFile);
 	}
-		
-    return;
+	
+    return;  
 }
 		
 		
