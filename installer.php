@@ -22,6 +22,18 @@ class TraiwiInstallation {
 	
 	/**
 	 * 
+	 * @var string
+	 */
+	protected $version;
+	
+	/**
+	 * 
+	 * @var string
+	 */
+	protected $installerTitle;
+	
+	/**
+	 * 
 	 * @var Colorizer
 	 */
 	protected $colorizer;
@@ -157,13 +169,11 @@ class TraiwiInstallation {
 	 * 
 	 */
 	public function __construct(Colorizer $colorizer, TraiwiFileContainer $container, array $argv) {
+		$this->version = "0.1.0";
+		$this->installerTitle = "TRAIWI CLI";
+		
 		$this->isWindows = strtoupper(substr(PHP_OS, 0, 3)) === "WIN";
 		$this->ds = DIRECTORY_SEPARATOR;
-		$this->command = "";
-		$this->availableCommands = array(
-			"new" => "create a new empty project.",
-			"clone" => "clone an existing project."
-		);
 		
 		$this->colorizer = $colorizer;
 		$this->colorizer->setIsWindows($this->isWindows);
@@ -209,18 +219,18 @@ class TraiwiInstallation {
 			"shell" . $this->ds . "Templates",
 		);
 		
+		$this->command = "";
+		$this->availableCommands = array(
+			"create-new" => "create a new empty project.",
+			"install" => "install an existing project.",
+// 			"self-update" => "update this installer to the current version",
+		);
 	}
 	
 	/**
 	 * 
 	 */
 	public function start() {
-		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
-		$this->colorizer->cecho("                   "); echo PHP_EOL;
-		$this->colorizer->cecho("TRAIWI Installation", Colorizer::FG_ORANGE); echo PHP_EOL;
-		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
-		$this->colorizer->cecho("                   "); echo PHP_EOL;
-		
 		$this->checkParameter();
 		
 		$command = $this->command;
@@ -230,7 +240,18 @@ class TraiwiInstallation {
 	/**
 	 * 
 	 */
-	protected function commandNew() {
+	protected function welcomeMessage() {
+		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("                   "); echo PHP_EOL;
+		$this->colorizer->cecho($this->installerTitle, Colorizer::FG_ORANGE); echo PHP_EOL;
+		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("                   "); echo PHP_EOL;
+	}
+	
+	/**
+	 * 
+	 */
+	protected function commandCreateNew() {
 		$this->checkPermission();
 		$this->createFolders();
 		$this->installComposer();
@@ -240,6 +261,27 @@ class TraiwiInstallation {
 		$this->loadVendors();
 		$this->linkBinaries();
 		$this->finish();
+	}
+	
+	/**
+	 * 
+	 */
+	protected function commandInstall() {
+		$this->checkPermission();
+		$this->installComposer();
+		$this->enterCredentials();
+		$this->loadVendors();
+		$this->linkBinaries();
+		$this->finish();
+	}
+	
+	/**
+	 * 
+	 */
+	protected function commandGetcwd() {
+		$this->colorizer->cecho(getcwd(), Colorizer::FG_LIGHT_GRAY); echo PHP_EOL; echo PHP_EOL;
+			
+		exit();
 	}
 	
 	/**
@@ -256,7 +298,7 @@ class TraiwiInstallation {
 		
 		if(count(scandir($this->targetDir)) > 2 && !$force) {
 			$msg = "This directory is not empty." . PHP_EOL;
-			$msg .= "Append -f or --force to override the current installtion";
+			$msg .= "Append -f or --force to override the current installation";
 			$this->error($msg);
 		}
 	}
@@ -685,8 +727,20 @@ class TraiwiInstallation {
 	 */
 	protected function checkParameter() {
 		if(in_array("-h", $this->argv) || in_array("--help", $this->argv)) {
+			$this->welcomeMessage();
+			
 			$this->displayHelp();
 		}
+		
+		if(in_array("-V", $this->argv)) {
+			$this->colorizer->cecho($this->installerTitle, Colorizer::FG_ORANGE);
+			$this->colorizer->cecho(" version", Colorizer::FG_LIGHT_GRAY);
+			$this->colorizer->cecho(" " . $this->version, Colorizer::FG_GREEN); echo PHP_EOL; echo PHP_EOL;
+			
+			exit();
+		}
+		
+		$this->welcomeMessage();
 		
 		if(!isset($this->argv[1]) || substr($this->argv[1], 0, 1) == "-") {
 			$this->error("No command given.", false);
@@ -700,7 +754,12 @@ class TraiwiInstallation {
 			$this->displayHelp();
 		}
 		
-		$this->command = "command" . ucfirst(strtolower($this->argv[1]));
+		$parts = explode("-", $this->argv[1]);
+		$command = "command";
+		foreach($parts as $part) {
+			$command .= ucfirst(strtolower($part));
+		}
+		$this->command = $command;
 		
 		if(!isset($this->argv[2]) || substr($this->argv[2], 0, 1) == "-") {
 			$this->error("No project name given. vendor/package", false);
@@ -733,14 +792,20 @@ class TraiwiInstallation {
 		
 		$this->colorizer->cecho("Commands:", Colorizer::FG_ORANGE); echo PHP_EOL;
 		foreach($this->availableCommands as $command => $description) {
-			$this->colorizer->cecho("  " . $command . "\t " . $description, Colorizer::FG_GREEN); echo PHP_EOL;
+			$this->colorizer->cecho("  " . $command, Colorizer::FG_GREEN);
+			$this->colorizer->cecho("\t " . $description, Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 		}
 		echo PHP_EOL;
 		
 		$this->colorizer->cecho("Options:", Colorizer::FG_ORANGE); echo PHP_EOL;
-		$this->colorizer->cecho("  -h, --help \t\t Display this help", Colorizer::FG_GREEN); echo PHP_EOL;
-		$this->colorizer->cecho("  -f, --force \t\t Overwrites the given project folder", Colorizer::FG_GREEN); echo PHP_EOL;
-		$this->colorizer->cecho("  -v, --verbose \t Detailed information about every step", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho("  -V", Colorizer::FG_GREEN);
+		$this->colorizer->cecho("\t\t Display this installer version", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("  -h, --help", Colorizer::FG_GREEN);
+		$this->colorizer->cecho("\t Display this help", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("  -f, --force", Colorizer::FG_GREEN);
+		$this->colorizer->cecho("\t Overwrites the given project folder", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("  -v, --verbose", Colorizer::FG_GREEN);
+		$this->colorizer->cecho("\t Detailed information about every step", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 		
 		
 		exit;
