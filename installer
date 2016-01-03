@@ -169,7 +169,7 @@ class TraiwiInstallation {
 	 * 
 	 */
 	public function __construct(Colorizer $colorizer, TraiwiFileContainer $container, array $argv) {
-		$this->version = "0.1.0";
+		$this->version = "1.0.0";
 		$this->installerTitle = "TRAIWI CLI";
 		
 		$this->isWindows = strtoupper(substr(PHP_OS, 0, 3)) === "WIN";
@@ -223,8 +223,7 @@ class TraiwiInstallation {
 		$this->availableCommands = array(
 			"create-new" => "create a new empty project.",
 			"install" => "install an existing project.",
-			"self-update" => "update this installer to the current version",
-			"getcwd" => "get current installation directory of this installer",
+// 			"self-update" => "update this installer to the current version",
 		);
 	}
 	
@@ -259,6 +258,18 @@ class TraiwiInstallation {
 		$this->createComposerJson();
 		$this->enterCredentials();
 		$this->createFiles();
+		$this->loadVendors();
+		$this->linkBinaries();
+		$this->finish();
+	}
+	
+	/**
+	 * 
+	 */
+	protected function commandInstall() {
+		$this->checkPermission();
+		$this->installComposer();
+		$this->enterCredentials();
 		$this->loadVendors();
 		$this->linkBinaries();
 		$this->finish();
