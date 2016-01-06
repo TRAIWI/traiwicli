@@ -169,7 +169,7 @@ class TraiwiCli {
 	 * 
 	 */
 	public function __construct(Colorizer $colorizer, TraiwiFileContainer $container, array $argv) {
-		$this->version = "1.1.0";
+		$this->version = "1.1.1";
 		$this->installerTitle = "TRAIWI CLI";
 		
 		$this->isWindows = strtoupper(substr(PHP_OS, 0, 3)) === "WIN";
@@ -255,6 +255,7 @@ class TraiwiCli {
 		$this->checkPermission();
 		$this->createFolders();
 		$this->installComposer();
+		$this->addingPrivateRepo();
 		$this->createComposerJson();
 		$this->enterCredentials();
 		$this->createFiles();
@@ -269,6 +270,7 @@ class TraiwiCli {
 	protected function commandInstall() {
 		$this->checkPermission();
 		$this->installComposer();
+		$this->addingPrivateRepo();
 		$this->createComposerJson();
 		$this->enterCredentials();
 		$this->createProject();
@@ -386,6 +388,31 @@ class TraiwiCli {
 			$this->colorizer->cecho("Installed composer: ", Colorizer::FG_LIGHT_GRAY);
 		}
 		
+		$this->colorizer->cecho($this->symbolOk, Colorizer::FG_GREEN); echo PHP_EOL;
+	}
+	
+	/**
+	 *
+	 */
+	protected function addingPrivateRepo() {
+		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("Adding private repo: ", Colorizer::FG_LIGHT_GRAY);
+	
+		if($this->verbose) {
+			echo PHP_EOL;
+		}
+	
+		$this->execCommand(
+			"php " . $this->composer . " config -g repositories.myscipper composer http://toran.myscipper.de/repo/private/",
+			"Adding private repo"
+		);
+	
+		if($this->verbose) {
+			echo PHP_EOL;
+			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+			$this->colorizer->cecho("Added private repo: ", Colorizer::FG_LIGHT_GRAY);
+		}
+	
 		$this->colorizer->cecho($this->symbolOk, Colorizer::FG_GREEN); echo PHP_EOL;
 	}
 	
@@ -1193,10 +1220,7 @@ $entityManager = EntityManager::create($dbParams, $config, $evm);
     "require": {
 		"traiwi/traiwicore": "dev-develop",
 		"scipper/formfile": "dev-master"
-    },
-    "repositories": [
-		{"type": "composer", "url": "http://toran.myscipper.de/repo/private/"}
-    ]
+    }
 }
 		
 ';
