@@ -3,7 +3,7 @@
 <?php
 
 $cliArgs = is_array($argv) ? $argv : array();
-$traiwiCli = new TraiwiInstallation(
+$traiwiCli = new TraiwiCli(
 	new Colorizer(), 
 	new TraiwiFileContainer(),
 	$cliArgs
@@ -18,7 +18,7 @@ $traiwiCli->start();
  * @package TRAIWICLI
  *
  */
-class TraiwiInstallation {
+class TraiwiCli {
 	
 	/**
 	 * 
@@ -169,7 +169,7 @@ class TraiwiInstallation {
 	 * 
 	 */
 	public function __construct(Colorizer $colorizer, TraiwiFileContainer $container, array $argv) {
-		$this->version = "1.0.0";
+		$this->version = "1.1.0";
 		$this->installerTitle = "TRAIWI CLI";
 		
 		$this->isWindows = strtoupper(substr(PHP_OS, 0, 3)) === "WIN";
@@ -191,7 +191,7 @@ class TraiwiInstallation {
 		$this->verbose = false;
 		$this->targetDir = getcwd() . $this->ds;
 		$this->composer = $this->targetDir . "composer.phar";
-		$this->projectname = @$argv[1];
+		$this->projectname = @$argv[2];
 		
 		$this->files = array(
 			".htaccess" => $this->fileContainer->getHtacces(),
@@ -260,7 +260,7 @@ class TraiwiInstallation {
 		$this->createFiles();
 		$this->loadVendors();
 		$this->linkBinaries();
-		$this->finish();
+		$this->finishCreateNew();
 	}
 	
 	/**
@@ -269,10 +269,12 @@ class TraiwiInstallation {
 	protected function commandInstall() {
 		$this->checkPermission();
 		$this->installComposer();
+		$this->createComposerJson();
 		$this->enterCredentials();
+		$this->createProject();
 		$this->loadVendors();
 		$this->linkBinaries();
-		$this->finish();
+		$this->finishInstall();
 	}
 	
 	/**
@@ -400,7 +402,7 @@ class TraiwiInstallation {
 	
 		$filename = "composer.json";
 		$path = $this->targetDir . $filename;
-		$content = $this->fileContainer->getComposer($this->projectname);
+		$content = $this->fileContainer->getComposerJson($this->projectname);
 		if(!file_put_contents($path, $content)) {
 			$this->error($path . " could not be created");
 		}
@@ -539,6 +541,34 @@ class TraiwiInstallation {
 	}
 	
 	/**
+	 *
+	 */
+	protected function createProject() {
+		$this->colorizer->cecho("$ ", Colorizer::FG_LIGHT_BLUE);
+		$this->colorizer->cecho("Creating project: ", Colorizer::FG_LIGHT_GRAY); 
+		
+		if($this->verbose) {
+			echo PHP_EOL;
+		}
+
+		$this->execCommand(
+			"php " . $this->composer . " --working-dir=" . $this->targetDir . " create-project " . $this->projectname . " tmp --stability dev --keep-vcs",
+			"Checking out package with composer"
+		);
+		
+		$this->rcopy($this->targetDir . "tmp", $this->targetDir);
+		$this->rrmdir($this->targetDir . "tmp");
+	
+		if($this->verbose) {
+			echo PHP_EOL;
+			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+			$this->colorizer->cecho("Created project: ", Colorizer::FG_LIGHT_GRAY);
+		}
+		
+		$this->colorizer->cecho($this->symbolOk, Colorizer::FG_GREEN); echo PHP_EOL;
+	}
+	
+	/**
 	 * 
 	 */
 	protected function loadVendors() {
@@ -574,9 +604,14 @@ class TraiwiInstallation {
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
 			$this->colorizer->cecho("symlink(vendor" . $this->ds . "bin, bin)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 		}
-		if(!symlink("vendor" . $this->ds . "bin", "bin")) {
-			$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
-			$this->error("binaries could not be linked");
+		if(!file_exists($this->targetDir . "vendor/bin")) {
+			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_RED);
+			$this->colorizer->cecho("Linking to vendor/bin not possible, folder does not exist.", Colorizer::FG_LIGHT_RED); echo PHP_EOL;
+		} else {
+			if(!symlink("vendor" . $this->ds . "bin", "bin")) {
+				$this->colorizer->cecho($this->symbolError, Colorizer::FG_RED); echo PHP_EOL;
+				$this->error("binaries could not be linked");
+			}
 		}
 
 		if($this->verbose) {
@@ -591,7 +626,7 @@ class TraiwiInstallation {
 	/**
 	 * 
 	 */
-	protected function finish() {
+	protected function finishCreateNew() {
 		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
 		$this->colorizer->cecho("                   "); echo PHP_EOL;
 		$this->colorizer->cecho("Congratulation!", Colorizer::FG_GREEN); echo PHP_EOL;
@@ -639,6 +674,16 @@ class TraiwiInstallation {
 	
 	/**
 	 * 
+	 */
+	protected function finishInstall() {
+		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("                   "); echo PHP_EOL;
+		$this->colorizer->cecho("Congratulation!", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho("Your project '" . $this->projectname . "' was successfully cloned to: " . $this->targetDir, Colorizer::FG_GREEN); echo PHP_EOL;echo PHP_EOL;
+	}
+	
+	/**
+	 * 
 	 * @param string $dir
 	 */
 	protected function rrmdir($dir) {
@@ -671,6 +716,31 @@ class TraiwiInstallation {
 	
 	/**
 	 * 
+	 * @param string $src
+	 * @param string $dst
+	 */
+	protected function rcopy($src, $dst) {
+		$dir = opendir($src);
+		@mkdir($dst, 0750, true);
+		while(false !== ($file = readdir($dir))) {
+			if(($file != ".") && ($file != "..")) {
+				if(is_dir($src . "/" . $file)) {
+					$this->rcopy($src . "/" . $file, $dst . "/" . $file);
+				} else {
+					if($this->verbose) {
+						$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+						$this->colorizer->cecho("copy(" . $src . "/" . $file, $dst . "/" . $file .")", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+					}
+					
+					copy($src . "/" . $file, $dst . "/" . $file);
+				}
+			}
+		}
+		closedir($dir);
+	}
+	
+	/**
+	 * 
 	 * @param string $error
 	 * @param boolean $exit
 	 */
@@ -694,9 +764,11 @@ class TraiwiInstallation {
 		
 		if($this->verbose) {
 			if($this->isWindows) {
-				$cmd .= " 1> " . getcwd() . $this->ds . "install.log 2>&1";
+// 				$cmd .= " 1> " . getcwd() . $this->ds . "install.log 2>&1";
+				$cmd .= " 2> " . getcwd() . $this->ds . "install.log";
 			} else {
-				$cmd .= " 2>&1 | tee " . getcwd() . $this->ds . "install.log";
+// 				$cmd .= " 2>&1 | tee " . getcwd() . $this->ds . "install.log";
+				$cmd .= " 2> " . getcwd() . $this->ds . "install.log";
 			}
 			
 			$this->colorizer->cecho("exec(" . $cmd . ")", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
@@ -776,6 +848,7 @@ class TraiwiInstallation {
 		$parts = explode("/", $this->argv[2]);
 		$this->vendor = $parts[0];
 		$this->package = $parts[1];
+		$this->projectname = $this->argv[2];
 		$this->namespace = ucfirst(strtolower($this->vendor)) . "\\" . ucfirst(strtolower($this->package));
 		
 		if(in_array("-v", $this->argv) || in_array("--verbose", $this->argv)) {
@@ -1114,7 +1187,7 @@ $entityManager = EntityManager::create($dbParams, $config, $evm);
 	 * 
 	 * @return string
 	 */
-	public function getComposer($projectname) {
+	public function getComposerJson($projectname) {
 		return '{
 	"name": "' . $projectname . '",
     "require": {
