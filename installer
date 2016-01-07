@@ -169,7 +169,7 @@ class TraiwiCli {
 	 * 
 	 */
 	public function __construct(Colorizer $colorizer, TraiwiFileContainer $container, array $argv) {
-		$this->version = "1.2.0";
+		$this->version = "1.2.1";
 		$this->installerTitle = "TRAIWI CLI";
 		
 		$this->isWindows = strtoupper(substr(PHP_OS, 0, 3)) === "WIN";
@@ -446,7 +446,7 @@ class TraiwiCli {
 		
 		if(file_exists($path)) {
 			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_RED);
-			$this->colorizer->cecho("composer.json already exists. skipping", Colorizer::FG_LIGHT_RED);
+			$this->colorizer->cecho("composer.json already exists. skipping", Colorizer::FG_LIGHT_RED); echo PHP_EOL;
 		} else {
 			$content = $this->fileContainer->getComposerJson($this->projectname);
 		
