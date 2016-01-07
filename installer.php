@@ -169,7 +169,7 @@ class TraiwiCli {
 	 * 
 	 */
 	public function __construct(Colorizer $colorizer, TraiwiFileContainer $container, array $argv) {
-		$this->version = "1.1.1";
+		$this->version = "1.2.0";
 		$this->installerTitle = "TRAIWI CLI";
 		
 		$this->isWindows = strtoupper(substr(PHP_OS, 0, 3)) === "WIN";
@@ -221,8 +221,9 @@ class TraiwiCli {
 		
 		$this->command = "";
 		$this->availableCommands = array(
-			"create-new" => "create a new empty project.",
-			"install" => "install an existing project.",
+			"create-new" => "\tcreate a new empty project.",
+			"install" => "\tinstall an existing project.",
+			"merge" => "\t\tmerges the traiwicore into the current folder.",
 // 			"self-update" => "update this installer to the current version",
 		);
 	}
@@ -277,6 +278,19 @@ class TraiwiCli {
 		$this->loadVendors();
 		$this->linkBinaries();
 		$this->finishInstall();
+	}
+	
+	/**
+	 * 
+	 */
+	protected function commandMerge() {
+		$this->installComposer();
+		$this->addingPrivateRepo();
+		$this->createComposerJson();
+		$this->enterCredentials();
+		$this->loadVendors();
+		$this->linkBinaries();
+		$this->finishMerge();
 	}
 	
 	/**
@@ -429,27 +443,34 @@ class TraiwiCli {
 	
 		$filename = "composer.json";
 		$path = $this->targetDir . $filename;
-		$content = $this->fileContainer->getComposerJson($this->projectname);
-		if(!file_put_contents($path, $content)) {
-			$this->error($path . " could not be created");
-		}
 		
-		if($this->verbose) {
-			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
-			$this->colorizer->cecho("chmod(" . $path . ", 0644)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
-		}
+		if(file_exists($path)) {
+			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_RED);
+			$this->colorizer->cecho("composer.json already exists. skipping", Colorizer::FG_LIGHT_RED);
+		} else {
+			$content = $this->fileContainer->getComposerJson($this->projectname);
 		
-		if(!chmod($path, 0644)) {
-			$this->error("Permission for " . $path . " could not be set");
+			if(!file_put_contents($path, $content)) {
+				$this->error($path . " could not be created");
+			}
+			
+			if($this->verbose) {
+				$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+				$this->colorizer->cecho("chmod(" . $path . ", 0644)", Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+			}
+			
+			if(!chmod($path, 0644)) {
+				$this->error("Permission for " . $path . " could not be set");
+			}
+			
+			if($this->verbose) {
+				echo PHP_EOL;
+				$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
+				$this->colorizer->cecho("Created composer json: ", Colorizer::FG_LIGHT_GRAY);
+			}
+			
+			$this->colorizer->cecho($this->symbolOk, Colorizer::FG_GREEN); echo PHP_EOL;
 		}
-
-		if($this->verbose) {
-			echo PHP_EOL;
-			$this->colorizer->cecho(" > ", Colorizer::FG_LIGHT_BLUE);
-			$this->colorizer->cecho("Created composer json: ", Colorizer::FG_LIGHT_GRAY);
-		}
-		
-		$this->colorizer->cecho($this->symbolOk, Colorizer::FG_GREEN); echo PHP_EOL;
 	}
 	
 	/**
@@ -711,6 +732,16 @@ class TraiwiCli {
 	
 	/**
 	 * 
+	 */
+	protected function finishMerge() {
+		$this->colorizer->cecho("______________________________________________________________________________", Colorizer::FG_DARK_GRAY); echo PHP_EOL;
+		$this->colorizer->cecho("                   "); echo PHP_EOL;
+		$this->colorizer->cecho("Congratulation!", Colorizer::FG_GREEN); echo PHP_EOL;
+		$this->colorizer->cecho("You successfully merged the traiwicore into: " . $this->targetDir, Colorizer::FG_GREEN); echo PHP_EOL;echo PHP_EOL;
+	}
+	
+	/**
+	 * 
 	 * @param string $dir
 	 */
 	protected function rrmdir($dir) {
@@ -853,12 +884,20 @@ class TraiwiCli {
 			$this->displayHelp();
 		}
 		
+		if(in_array("-v", $this->argv) || in_array("--verbose", $this->argv)) {
+			$this->verbose = true;
+		}
+		
 		$parts = explode("-", $this->argv[1]);
 		$command = "command";
 		foreach($parts as $part) {
 			$command .= ucfirst(strtolower($part));
 		}
 		$this->command = $command;
+		
+		if($this->command == "commandMerge") {
+			return;
+		}
 		
 		if(!isset($this->argv[2]) || substr($this->argv[2], 0, 1) == "-") {
 			$this->error("No project name given. vendor/package", false);
@@ -877,10 +916,6 @@ class TraiwiCli {
 		$this->package = $parts[1];
 		$this->projectname = $this->argv[2];
 		$this->namespace = ucfirst(strtolower($this->vendor)) . "\\" . ucfirst(strtolower($this->package));
-		
-		if(in_array("-v", $this->argv) || in_array("--verbose", $this->argv)) {
-			$this->verbose = true;
-		}	
 	}
 	
 	/**
@@ -893,7 +928,7 @@ class TraiwiCli {
 		$this->colorizer->cecho("Commands:", Colorizer::FG_ORANGE); echo PHP_EOL;
 		foreach($this->availableCommands as $command => $description) {
 			$this->colorizer->cecho("  " . $command, Colorizer::FG_GREEN);
-			$this->colorizer->cecho("\t " . $description, Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
+			$this->colorizer->cecho($description, Colorizer::FG_LIGHT_GRAY); echo PHP_EOL;
 		}
 		echo PHP_EOL;
 		
